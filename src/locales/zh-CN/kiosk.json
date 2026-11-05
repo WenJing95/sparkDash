@@ -1,0 +1,59 @@
+{
+  "page": {
+    "documentTitle": "sparkDash · 大屏模式",
+    "backTitle": "返回仪表盘（Esc）",
+    "fleetDecode": "集群解码 tok/s",
+    "gpuPower": "GPU 功耗",
+    "hottestGpu": "最高 GPU 温度",
+    "queued": "排队请求",
+    "energy24h": "最近 24 小时",
+    "energy24hEstimated": "最近 24 小时 · 估算",
+    "tokens24h": "Token · 最近 24 小时",
+    "online": "在线",
+    "stale": "数据已过期 · {{time}}",
+    "connecting": "连接中…",
+    "alerts": "活跃告警"
+  },
+  "card": {
+    "offlineAria": "{{name}}，离线",
+    "offline": "离线",
+    "workerOfTitle": "{{name}} 的工作节点",
+    "workerOf": "工作节点 · {{name}}",
+    "roleHead": "主节点",
+    "roleWorker": "工作节点",
+    "ram": "内存 {{ram}}",
+    "gpuTemp": "GPU 温度",
+    "cpuTemp": "CPU 温度",
+    "gpuPower": "GPU 功耗",
+    "diskFree": "磁盘可用",
+    "decode": "解码",
+    "prefill": "预填充",
+    "prefilling": "预填充中",
+    "unknownModel": "未知",
+    "ctx": "{{size}} 上下文"
+  },
+  "trace": {
+    "gen": "生成 tok/s",
+    "prefill": "预填充 tok/s",
+    "genScale": "生成 ≤{{max}}",
+    "prefillScale": "预填充 ≤{{max}}",
+    "caption": "tok/s 自动峰值 · {{scales}}"
+  },
+  "memory": {
+    "unified": "统一内存",
+    "vram": "显存",
+    "free": "可用 {{size}}",
+    "inUse": "已用",
+    "segEngine": "模型",
+    "segSystem": "系统",
+    "segOther": "其他",
+    "segGpu": "GPU"
+  },
+  "model": {
+    "headOffline": "主节点离线",
+    "headNotReady": "主节点 API 未就绪",
+    "headNoPort": "主节点未监控 LLM 端口",
+    "noLlmBusy": "无 LLM 响应 · GPU 使用中",
+    "noLlm": "无 LLM 响应"
+  }
+}

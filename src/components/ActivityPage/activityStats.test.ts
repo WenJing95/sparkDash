@@ -258,3 +258,15 @@ describe("exportText", () => {
     expect(exportText([], NY)).toBe("");
   });
 });
+
+describe("llm.* stage words", () => {
+  it("shows known stages in the UI language and unknown ones as sent", async () => {
+    const { i18n } = await import("../../i18n");
+    await i18n.loadNamespaces("activity");
+    const zh = i18n.getFixedT("zh-CN", "activity");
+    expect(typeLabel("llm.start.completed", zh)).toBe("LLM 启动：完成");
+    expect(typeLabel("llm.stop.failed", zh)).toBe("LLM 停止：失败");
+    expect(typeLabel("llm.start.weird", zh)).toBe("LLM 启动：weird");
+    expect(typeLabel("llm.start.completed")).toBe("LLM start completed");
+  });
+});

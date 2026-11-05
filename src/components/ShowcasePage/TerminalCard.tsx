@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 /**
  * Reveals `target` smoothly instead of in the lumps the network delivers it in.
@@ -75,6 +77,26 @@ export interface TerminalCardProps {
   copied?: boolean;
 }
 
+/** A stream or session status in the page's language; a status this page does not know is shown as sent. */
+export function showcaseStatusLabel(t: TFunction<"showcase">, status: string): string {
+  switch (status) {
+    case "pending":
+      return t("status.pending");
+    case "streaming":
+      return t("status.streaming");
+    case "running":
+      return t("status.running");
+    case "completed":
+      return t("status.completed");
+    case "error":
+      return t("status.error");
+    case "cancelled":
+      return t("status.cancelled");
+    default:
+      return status;
+  }
+}
+
 function statusClass(status: string): string {
   switch (status) {
     case "streaming":
@@ -102,6 +124,7 @@ export function TerminalCard({
   onCopy,
   copied,
 }: TerminalCardProps) {
+  const { t } = useTranslation("showcase");
   const bodyRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [reasoningOpen, setReasoningOpen] = useState(true);
@@ -146,17 +169,17 @@ export function TerminalCard({
       <header className="showcase-term__header">
         <span className="showcase-term__dot" aria-hidden />
         <span className="showcase-term__label" title={label}>
-          {label || "Terminal"}
+          {label || t("term.fallbackLabel")}
         </span>
-        <span className={`showcase-term__status ${statusClass(status)}`}>{status}</span>
+        <span className={`showcase-term__status ${statusClass(status)}`}>{showcaseStatusLabel(t, status)}</span>
         {tokenCount != null && tokenCount > 0 && (
-          <span className="showcase-term__tokens font-tabular">{tokenCount.toLocaleString()} tokens</span>
+          <span className="showcase-term__tokens font-tabular">{t("term.tokens", { tokens: tokenCount.toLocaleString() })}</span>
         )}
         <span
           className="showcase-term__tps font-tabular"
           title={
             peakTokPerSec > 0 || liveTokPerSec > 0
-              ? `Live ${liveTokPerSec.toFixed(1)} tok/s · peak ${Math.max(peakTokPerSec, liveTokPerSec).toFixed(1)} tok/s`
+              ? t("term.rateTitle", { live: liveTokPerSec.toFixed(1), peak: Math.max(peakTokPerSec, liveTokPerSec).toFixed(1) })
               : undefined
           }
         >
@@ -166,7 +189,7 @@ export function TerminalCard({
               {peakTokPerSec > 0 && (
                 <span className="showcase-term__tps-peak">
                   {" "}
-                  peak {Math.max(peakTokPerSec, liveTokPerSec).toFixed(0)}
+                  {t("metrics.peak", { value: Math.max(peakTokPerSec, liveTokPerSec).toFixed(0) })}
                 </span>
               )}
             </>
@@ -179,9 +202,9 @@ export function TerminalCard({
             type="button"
             className="showcase-term__copy"
             onClick={onCopy}
-            title="Copy this terminal"
+            title={t("term.copyTitle")}
           >
-            {copied ? "Copied" : "Copy"}
+            {copied ? t("term.copied") : t("term.copy")}
           </button>
         )}
       </header>
@@ -196,7 +219,7 @@ export function TerminalCard({
         }}
       >
         {empty && status === "pending" && (
-          <pre className="showcase-term__answer">Waiting…</pre>
+          <pre className="showcase-term__answer">{t("term.waiting")}</pre>
         )}
         {hasReasoning && (
           <div className="showcase-term__reasoning">
@@ -209,9 +232,9 @@ export function TerminalCard({
                 setReasoningOpen((o) => !o);
               }}
             >
-              {reasoningOpen ? "▾" : "▸"} Reasoning
+              {reasoningOpen ? "▾" : "▸"} {t("term.reasoning")}
               <span className="showcase-term__reasoning-meta">
-                {reasoning.length.toLocaleString()} chars
+                {t("term.chars", { chars: reasoning.length.toLocaleString() })}
               </span>
             </button>
             {reasoningOpen && (

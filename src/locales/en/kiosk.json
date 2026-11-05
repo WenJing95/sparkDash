@@ -1,0 +1,59 @@
+{
+  "page": {
+    "documentTitle": "sparkDash · Kiosk",
+    "backTitle": "Back to the dashboard (Esc)",
+    "fleetDecode": "tok/s fleet decode",
+    "gpuPower": "GPU power",
+    "hottestGpu": "hottest GPU",
+    "queued": "queued",
+    "energy24h": "24 h",
+    "energy24hEstimated": "24 h · est.",
+    "tokens24h": "tokens · 24 h",
+    "online": "online",
+    "stale": "stale · {{time}}",
+    "connecting": "connecting…",
+    "alerts": "Active alerts"
+  },
+  "card": {
+    "offlineAria": "{{name}}, offline",
+    "offline": "offline",
+    "workerOfTitle": "Worker of {{name}}",
+    "workerOf": "worker · {{name}}",
+    "roleHead": "head",
+    "roleWorker": "worker",
+    "ram": "RAM {{ram}}",
+    "gpuTemp": "GPU temp",
+    "cpuTemp": "CPU temp",
+    "gpuPower": "GPU power",
+    "diskFree": "Disk free",
+    "decode": "Decode",
+    "prefill": "Prefill",
+    "prefilling": "prefilling",
+    "unknownModel": "unknown",
+    "ctx": "{{size}} ctx"
+  },
+  "trace": {
+    "gen": "gen tok/s",
+    "prefill": "prefill tok/s",
+    "genScale": "gen ≤{{max}}",
+    "prefillScale": "prefill ≤{{max}}",
+    "caption": "tok/s auto peak · {{scales}}"
+  },
+  "memory": {
+    "unified": "Unified memory",
+    "vram": "VRAM",
+    "free": "{{size}} free",
+    "inUse": "In use",
+    "segEngine": "Model",
+    "segSystem": "System",
+    "segOther": "Other",
+    "segGpu": "GPU"
+  },
+  "model": {
+    "headOffline": "Head offline",
+    "headNotReady": "Head API not ready",
+    "headNoPort": "No LLM port watched on the head",
+    "noLlmBusy": "No LLM answering · GPU in use",
+    "noLlm": "No LLM answering"
+  }
+}

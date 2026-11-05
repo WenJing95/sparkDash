@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+import { i18n } from "../../i18n";
 import type { HistoryLlmPoint, HistoryPoint, LlmMetrics, SparkSnapshot } from "../../api/types";
 import { resolveSparkRole } from "../../api/sparkRole";
 import { formatMb } from "../../shared/formatBytes";
@@ -10,7 +12,7 @@ import {
   type VramBreakdownContext,
   type VramSegmentKey,
 } from "../../shared/vramBreakdown";
-import { formatCtx } from "../OverviewPage/fleetStats";
+import { ctxSize } from "../OverviewPage/fleetStats";
 
 /** How the unit grid uses the screen: `shrink` fits every card on one screen, `scroll` gives each a fixed shape and scrolls. */
 export type KioskFit = "shrink" | "scroll";
@@ -139,12 +141,42 @@ function availabilityOk(flag: boolean | undefined): boolean {
   return flag !== false;
 }
 
+function segmentLabel(t: TFunction<"kiosk">, key: VramSegmentKey): string {
+  switch (key) {
+    case "engine":
+      return t("memory.segEngine");
+    case "system":
+      return t("memory.segSystem");
+    case "other":
+      return t("memory.segOther");
+    default:
+      return t("memory.segGpu");
+  }
+}
+
+/** Context length with the "context" word in the card's language ("128k ctx" in English). */
+function ctxText(t: TFunction<"kiosk">, n: number | null | undefined): string | null {
+  const size = ctxSize(n);
+  return size == null ? null : t("card.ctx", { size });
+}
+
+/** Card text follows the caller's language; pure callers without one (tests) get English. */
+export function kioskCard(
+  spark: SparkSnapshot,
+  headSpark: SparkSnapshot | null,
+  vramContext: VramBreakdownContext | null,
+  t?: TFunction<"kiosk">
+): KioskCard {
+  return kioskCardText(t ?? i18n.getFixedT("en", "kiosk"), spark, headSpark, vramContext);
+}
+
 /**
  * Everything a kiosk card shows, derived with the Overview card's rules: the memory split comes from
  * the same breakdown, a worker shows its live head's model, an unmeasured rate is "—", and a unit
  * whose GPU is in use while no endpoint answers is not reported as having no model.
  */
-export function kioskCard(
+function kioskCardText(
+  t: TFunction<"kiosk">,
   spark: SparkSnapshot,
   headSpark: SparkSnapshot | null,
   vramContext: VramBreakdownContext | null
@@ -172,26 +204,28 @@ export function kioskCard(
   const breakdown = gpu && vramKnown && context ? computeVramBreakdown(gpu.vram, gpu.processes, context) : null;
   if (breakdown && breakdown.totalMB > 0) {
     memory = {
-      label: breakdown.model === "unified" ? "Unified memory" : "VRAM",
-      free: `${formatMb(breakdown.freeMB)} free`,
+      label: breakdown.model === "unified" ? t("memory.unified") : t("memory.vram"),
+      free: t("memory.free", { size: formatMb(breakdown.freeMB) }),
       tone: breakdown.tone,
       segments: breakdown.segments.map((x) => ({ key: x.key, pct: Math.min(100, (x.mb / breakdown.totalMB) * 100) })),
-      legend: legendItems(breakdown).filter((x): x is { key: VramSegmentKey; label: string; gb: string } => x.key !== "free"),
+      legend: legendItems(breakdown)
+        .filter((x): x is { key: VramSegmentKey; label: string; gb: string } => x.key !== "free")
+        .map((x) => ({ ...x, label: segmentLabel(t, x.key) })),
       ram,
     };
     // On a Mac the collector reports the whole pool's use as GPU use (the same figure as RAM in use,
     // with no GPU share of its own), so neither "GPU" nor "Model" is true of it: say what it is.
     if (pooled && um && !um.gpuUsed && gpu && Math.abs(gpu.vram.used - um.used) < 1) {
       memory.segments = [{ key: "gpu", pct: Math.min(100, (um.used / breakdown.totalMB) * 100) }];
-      memory.legend = [{ key: "gpu", label: "In use", gb: gbNumber(um.used) }];
+      memory.legend = [{ key: "gpu", label: t("memory.inUse"), gb: gbNumber(um.used) }];
     }
   } else if (gpu || um) {
     const total = gpu?.vram?.total ?? um?.total ?? 0;
     const used = gpu?.vram?.used ?? um?.used ?? 0;
     const avail = gpu?.vram?.available ?? um?.available ?? 0;
     memory = {
-      label: discrete ? "VRAM" : "Unified memory",
-      free: vramKnown && total > 0 ? `${formatMb(avail)} free` : null,
+      label: discrete ? t("memory.vram") : t("memory.unified"),
+      free: vramKnown && total > 0 ? t("memory.free", { size: formatMb(avail) }) : null,
       tone: "ok",
       segments: vramKnown && total > 0 ? [{ key: "gpu", pct: Math.min(100, (used / total) * 100) }] : [],
       legend: [],
@@ -206,7 +240,7 @@ export function kioskCard(
     const ok = llm.measurementValid !== false;
     rates = {
       decode: ok ? llm.generationTps.toFixed(1) : "—",
-      prefill: !ok ? "—" : llm.prefillActive && llm.prefillTps <= 0 ? "prefilling" : Math.round(llm.prefillTps).toLocaleString(),
+      prefill: !ok ? "—" : llm.prefillActive && llm.prefillTps <= 0 ? t("card.prefilling") : Math.round(llm.prefillTps).toLocaleString(),
       decodeLive: ok && llm.generationTps > 0,
     };
   }
@@ -221,17 +255,17 @@ export function kioskCard(
     const headState = !headSpark
       ? null
       : !headSpark.online
-        ? "Head offline"
+        ? t("model.headOffline")
         : headLlmList.length
-          ? "Head API not ready"
-          : "No LLM port watched on the head";
+          ? t("model.headNotReady")
+          : t("model.headNoPort");
     const label = headLlm?.modelId || spark.workerLabel?.trim() || spark.workerDerivedLabel?.trim() || null;
     workerOf = headSpark ? { name: headSpark.name } : null;
-    const ctx = headLlm ? formatCtx(headLlm.contextLength) : null;
+    const ctx = headLlm ? ctxText(t, headLlm.contextLength) : null;
     // With no head and no label there is nothing to name; the role badge already says "worker".
     model = label ? { text: label, ctx, muted: false } : headState ? { text: headState, ctx: null, muted: true } : null;
   } else if (llm) {
-    model = { text: llm.modelId ?? "unknown", ctx: formatCtx(llm.contextLength), muted: false };
+    model = { text: llm.modelId ?? t("card.unknownModel"), ctx: ctxText(t, llm.contextLength), muted: false };
   } else {
     // No endpoint answers. Memory or compute in use most likely means a model is still loading,
     // or a server sparkDash does not watch: say what is seen, not that nothing is loaded (the card
@@ -239,10 +273,10 @@ export function kioskCard(
     const memUsed = gpu?.vram?.used ?? um?.used ?? 0;
     const busy = memUsed >= 2048 || (gpu?.usage ?? 0) >= 10;
     model = busy
-      ? { text: "No LLM answering · GPU in use", ctx: null, muted: true }
+      ? { text: t("model.noLlmBusy"), ctx: null, muted: true }
       : spark.llmMonitoring === false
         ? null
-        : { text: "No LLM answering", ctx: null, muted: true };
+        : { text: t("model.noLlm"), ctx: null, muted: true };
   }
 
   return {

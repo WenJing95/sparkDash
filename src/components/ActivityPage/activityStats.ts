@@ -1,4 +1,6 @@
+import type { TFunction } from "i18next";
 import type { ActivityEvent } from "../../api/types";
+import { i18n } from "../../i18n";
 import { configuredTimeZone } from "../../shared/timeZone";
 
 /** Pure logic for the Activity page: categories, labels, filtering, counts, day grouping, export. */
@@ -7,27 +9,32 @@ export type Severity = ActivityEvent["severity"];
 
 export const SEVERITIES: readonly Severity[] = ["error", "warn", "success", "info"];
 
-export const SEVERITY_LABEL: Record<Severity, string> = {
-  error: "Error",
-  warn: "Warning",
-  success: "Success",
-  info: "Info",
-};
+/** Labels follow the caller's language; pure callers without one (tests, exports) get English. */
+const english = (): TFunction<"activity"> => i18n.getFixedT("en", "activity");
+
+function severityText(t: TFunction<"activity">, s: Severity): string {
+  switch (s) {
+    case "error":
+      return t("severity.error");
+    case "warn":
+      return t("severity.warn");
+    case "success":
+      return t("severity.success");
+    case "info":
+      return t("severity.info");
+    default:
+      return String(s);
+  }
+}
+
+/** "Error", "Warning", ... in the caller's language; an unknown severity is shown as sent. */
+export function severityLabel(s: Severity, t?: TFunction<"activity">): string {
+  return severityText(t ?? english(), s);
+}
 
 export type CategoryId = "status" | "thermal" | "health" | "alerts" | "hermes" | "bench" | "power" | "llm" | "fleet" | "other";
 
-export const CATEGORIES: readonly { id: CategoryId; label: string }[] = [
-  { id: "status", label: "Status (online/offline)" },
-  { id: "thermal", label: "Thermal" },
-  { id: "health", label: "Health" },
-  { id: "alerts", label: "Alert notifications" },
-  { id: "hermes", label: "Hermes" },
-  { id: "bench", label: "Benchmarks" },
-  { id: "power", label: "Power" },
-  { id: "llm", label: "LLM models" },
-  { id: "fleet", label: "Fleet changes" },
-  { id: "other", label: "Other" },
-];
+export const CATEGORIES: readonly CategoryId[] = ["status", "thermal", "health", "alerts", "hermes", "bench", "power", "llm", "fleet", "other"];
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -66,56 +73,117 @@ export function categorize(type: string): CategoryId {
   return "other";
 }
 
-const KNOWN_LABELS: Record<string, string> = {
-  "spark.online": "Online",
-  "spark.offline": "Offline",
-  "spark.added": "Spark added",
-  "spark.removed": "Spark removed",
-  "gpu.throttle.thermal": "Thermal throttle",
-  "gpu.throttle.cleared": "Throttle cleared",
-  "hermes.update.available": "Hermes update available",
-  "hermes.update.success": "Hermes updated",
-  "hermes.update.error": "Hermes update failed",
-  "health.xid": "Xid error",
-  "health.oom": "Out of memory kill",
-  "health.thermal": "Running hot",
-  "health.low-power": "Low power state",
-  "health.memory": "Low memory",
-  "health.concurrency": "Many models loaded",
-  "health.link-speed": "Slow link",
-  "health.roce-link": "RoCE link down",
-  "health.roce-loss": "RoCE packet loss",
-  "health.cleared": "Health OK",
-  "alert.notify.sent": "Notification sent",
-  "alert.notify.failed": "Notification failed",
-  "power.shutdown": "Shutdown",
-  "power.wake": "Wake",
-};
+function knownLabel(t: TFunction<"activity">, type: string): string | null {
+  switch (type) {
+    case "spark.online": return t("types.sparkOnline");
+    case "spark.offline": return t("types.sparkOffline");
+    case "spark.added": return t("types.sparkAdded");
+    case "spark.removed": return t("types.sparkRemoved");
+    case "gpu.throttle.thermal": return t("types.throttleThermal");
+    case "gpu.throttle.cleared": return t("types.throttleCleared");
+    case "hermes.update.available": return t("types.hermesAvailable");
+    case "hermes.update.success": return t("types.hermesSuccess");
+    case "hermes.update.error": return t("types.hermesError");
+    case "health.xid": return t("types.healthXid");
+    case "health.oom": return t("types.healthOom");
+    case "health.thermal": return t("types.healthThermal");
+    case "health.low-power": return t("types.healthLowPower");
+    case "health.memory": return t("types.healthMemory");
+    case "health.concurrency": return t("types.healthConcurrency");
+    case "health.link-speed": return t("types.healthLinkSpeed");
+    case "health.roce-link": return t("types.healthRoceLink");
+    case "health.roce-loss": return t("types.healthRoceLoss");
+    case "health.cleared": return t("types.healthCleared");
+    case "alert.notify.sent": return t("types.notifySent");
+    case "alert.notify.failed": return t("types.notifyFailed");
+    case "power.shutdown": return t("types.powerShutdown");
+    case "power.wake": return t("types.powerWake");
+    default: return null;
+  }
+}
 
-const BENCH_NAME: Record<string, string> = { decode: "Decode bench", prefill: "Prefill bench", quality: "Quality bench" };
-const BENCH_STAGE: Record<string, string> = { finished: "", failed: " failed", cancelled: " cancelled" };
-const LLM_ACTION: Record<string, string> = { start: "LLM start", stop: "LLM stop", attach: "LLM attach" };
+function benchName(t: TFunction<"activity">, kind: string): string | null {
+  if (kind === "decode") return t("types.benchDecode");
+  if (kind === "prefill") return t("types.benchPrefill");
+  if (kind === "quality") return t("types.benchQuality");
+  return null;
+}
 
-function sentence(s: string): string {
-  const t = s.replace(/[._-]+/g, " ").trim();
-  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Event";
+function benchLabel(t: TFunction<"activity">, name: string, stage: string): string | null {
+  if (stage === "finished") return name;
+  if (stage === "failed") return t("types.benchFailed", { name });
+  if (stage === "cancelled") return t("types.benchCancelled", { name });
+  return null;
+}
+
+/** The last part of an llm.* type ("completed") in the UI language; an unknown stage is kept as the server sent it. */
+function llmStageText(t: TFunction<"activity">, stage: string): string {
+  switch (stage) {
+    case "requested": return t("llmStage.requested");
+    case "started": return t("llmStage.started");
+    case "running": return t("llmStage.running");
+    case "completed": return t("llmStage.completed");
+    case "failed": return t("llmStage.failed");
+    case "cancelled": return t("llmStage.cancelled");
+    case "stopped": return t("llmStage.stopped");
+    case "attached": return t("llmStage.attached");
+    case "detached": return t("llmStage.detached");
+    default: return stage;
+  }
+}
+
+function llmLabel(t: TFunction<"activity">, action: string, rawStage: string): string | null {
+  const stage = llmStageText(t, rawStage);
+  if (action === "start") return t("types.llmStart", { stage });
+  if (action === "stop") return t("types.llmStop", { stage });
+  if (action === "attach") return t("types.llmAttach", { stage });
+  return null;
+}
+
+/** An unknown type is shown as its own id made readable ("foo.bar_baz" -> "Foo bar baz"). */
+function sentence(t: TFunction<"activity">, s: string): string {
+  const text = s.replace(/[._-]+/g, " ").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : t("types.fallback");
+}
+
+function typeText(t: TFunction<"activity">, type: string): string {
+  const known = knownLabel(t, type);
+  if (known != null) return known;
+  const parts = type.split(".");
+  if (parts[0] === "bench" && parts.length === 3) {
+    const name = benchName(t, parts[1]);
+    const label = name == null ? null : benchLabel(t, name, parts[2]);
+    if (label != null) return label;
+  }
+  if (parts[0] === "llm" && parts.length === 3) {
+    const label = llmLabel(t, parts[1], parts[2]);
+    if (label != null) return label;
+  }
+  return sentence(t, type);
 }
 
 /** Short human label for a type tag, e.g. "bench.decode.finished" -> "Decode bench". */
-export function typeLabel(type: string): string {
-  if (KNOWN_LABELS[type]) return KNOWN_LABELS[type];
-  const parts = type.split(".");
-  if (parts[0] === "bench" && parts.length === 3 && BENCH_NAME[parts[1]] && parts[2] in BENCH_STAGE) {
-    return BENCH_NAME[parts[1]] + BENCH_STAGE[parts[2]];
-  }
-  if (parts[0] === "llm" && parts.length === 3 && LLM_ACTION[parts[1]]) {
-    return `${LLM_ACTION[parts[1]]} ${parts[2]}`;
-  }
-  return sentence(type);
+export function typeLabel(type: string, t?: TFunction<"activity">): string {
+  return typeText(t ?? english(), type);
 }
 
-export function categoryLabel(id: CategoryId): string {
-  return CATEGORIES.find((c) => c.id === id)?.label ?? "Other";
+function categoryText(t: TFunction<"activity">, id: CategoryId): string {
+  switch (id) {
+    case "status": return t("category.status");
+    case "thermal": return t("category.thermal");
+    case "health": return t("category.health");
+    case "alerts": return t("category.alerts");
+    case "hermes": return t("category.hermes");
+    case "bench": return t("category.bench");
+    case "power": return t("category.power");
+    case "llm": return t("category.llm");
+    case "fleet": return t("category.fleet");
+    default: return t("category.other");
+  }
+}
+
+export function categoryLabel(id: CategoryId, t?: TFunction<"activity">): string {
+  return categoryText(t ?? english(), id);
 }
 
 /** Newest first by id (ids are monotonic), ts as a tiebreak for odd inputs. */
@@ -141,7 +209,7 @@ function rangeCutoff(range: RangeId, now: number): number {
 
 type Dim = keyof ActivityFilter;
 
-function matches(e: ActivityEvent, f: ActivityFilter, now: number, skip?: Dim): boolean {
+function matches(e: ActivityEvent, f: ActivityFilter, now: number, skip?: Dim, t?: TFunction<"activity">): boolean {
   if (skip !== "severities" && f.severities.length > 0 && !f.severities.includes(e.severity)) return false;
   if (skip !== "category" && f.category !== "all" && categorize(e.type) !== f.category) return false;
   if (skip !== "sparkId" && f.sparkId !== "all" && sparkKey(e) !== f.sparkId) return false;
@@ -149,7 +217,8 @@ function matches(e: ActivityEvent, f: ActivityFilter, now: number, skip?: Dim): 
   if (skip !== "query") {
     const q = f.query.trim().toLowerCase();
     if (q) {
-      const hay = `${e.message}\n${e.sparkName ?? ""}\n${e.type}\n${typeLabel(e.type)}`.toLowerCase();
+      // The type's label is searchable in English and in the page's language.
+      const hay = `${e.message}\n${e.sparkName ?? ""}\n${e.type}\n${typeLabel(e.type)}\n${t ? typeLabel(e.type, t) : ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
   }
@@ -157,26 +226,26 @@ function matches(e: ActivityEvent, f: ActivityFilter, now: number, skip?: Dim): 
 }
 
 /** Events matching every active filter dimension (order preserved). */
-export function filterEvents(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now()): ActivityEvent[] {
-  return events.filter((e) => matches(e, f, now));
+export function filterEvents(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now(), t?: TFunction<"activity">): ActivityEvent[] {
+  return events.filter((e) => matches(e, f, now, undefined, t));
 }
 
 /** Faceted counts: each dimension is counted with all the OTHER filters applied. */
-export function countBySeverity(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now()): Record<Severity, number> {
+export function countBySeverity(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now(), t?: TFunction<"activity">): Record<Severity, number> {
   const out: Record<Severity, number> = { error: 0, warn: 0, success: 0, info: 0 };
-  for (const e of events) if (matches(e, f, now, "severities") && e.severity in out) out[e.severity]++;
+  for (const e of events) if (matches(e, f, now, "severities", t) && e.severity in out) out[e.severity]++;
   return out;
 }
 
-export function countByCategory(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now()): Record<CategoryId, number> {
-  const out = Object.fromEntries(CATEGORIES.map((c) => [c.id, 0])) as Record<CategoryId, number>;
-  for (const e of events) if (matches(e, f, now, "category")) out[categorize(e.type)]++;
+export function countByCategory(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now(), t?: TFunction<"activity">): Record<CategoryId, number> {
+  const out = Object.fromEntries(CATEGORIES.map((id) => [id, 0])) as Record<CategoryId, number>;
+  for (const e of events) if (matches(e, f, now, "category", t)) out[categorize(e.type)]++;
   return out;
 }
 
-export function countBySpark(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now()): Record<string, number> {
+export function countBySpark(events: readonly ActivityEvent[], f: ActivityFilter, now: number = Date.now(), t?: TFunction<"activity">): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const e of events) if (matches(e, f, now, "sparkId")) out[sparkKey(e)] = (out[sparkKey(e)] ?? 0) + 1;
+  for (const e of events) if (matches(e, f, now, "sparkId", t)) out[sparkKey(e)] = (out[sparkKey(e)] ?? 0) + 1;
   return out;
 }
 
@@ -201,13 +270,13 @@ export function sparkOptions(
 // ── Local-day handling ──────────────────────────────────────────────
 
 const dtfCache = new Map<string, Intl.DateTimeFormat>();
-function dtf(key: string, tz: string | undefined, opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+function dtf(key: string, tz: string | undefined, opts: Intl.DateTimeFormatOptions, locale = "en-US"): Intl.DateTimeFormat {
   // No explicit zone: the Settings time zone, else the browser's.
   const zone = tz ?? configuredTimeZone() ?? undefined;
-  const k = `${key}|${zone ?? ""}`;
+  const k = `${key}|${zone ?? ""}|${locale}`;
   let f = dtfCache.get(k);
   if (!f) {
-    f = new Intl.DateTimeFormat("en-US", { ...opts, timeZone: zone });
+    f = new Intl.DateTimeFormat(locale, { ...opts, timeZone: zone });
     dtfCache.set(k, f);
   }
   return f;
@@ -240,9 +309,9 @@ function parseKey(key: string): Ymd {
 }
 
 /** Format a day key with Intl options (the key is a plain calendar date, so UTC is exact). */
-function formatDayKey(key: string, opts: Intl.DateTimeFormatOptions): string {
+function formatDayKey(key: string, opts: Intl.DateTimeFormatOptions, locale: string): string {
   const { y, m, d } = parseKey(key);
-  return dtf(`dk${JSON.stringify(opts)}`, "UTC", opts).format(new Date(Date.UTC(y, m - 1, d)));
+  return dtf(`dk${JSON.stringify(opts)}`, "UTC", opts, locale).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 function shiftKey(key: string, days: number): string {
@@ -252,13 +321,24 @@ function shiftKey(key: string, days: number): string {
 }
 
 /** "Today", "Yesterday", else "Tuesday, Oct 7" (adds the year when it differs from now's). */
-export function dayLabel(key: string, now: number = Date.now(), tz?: string): string {
+function dayText(t: TFunction<"activity">, key: string, now: number, tz?: string): string {
   const today = ymd(now, tz);
   const diff = dayNumber(today) - dayNumber(parseKey(key));
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
+  if (diff === 0) return t("day.today");
+  if (diff === 1) return t("day.yesterday");
   const sameYear = parseKey(key).y === today.y;
-  return formatDayKey(key, sameYear ? { weekday: "long", month: "short", day: "numeric" } : { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+  const opts: Intl.DateTimeFormatOptions = sameYear
+    ? { weekday: "long", month: "short", day: "numeric" }
+    : { weekday: "long", month: "short", day: "numeric", year: "numeric" };
+  return formatDayKey(key, opts, t("day.intlLocale"));
+}
+
+export function dayLabel(key: string, now: number = Date.now(), tz?: string, t?: TFunction<"activity">): string {
+  return dayText(t ?? english(), key, now, tz);
+}
+
+function intlLocale(t: TFunction<"activity">): string {
+  return t("day.intlLocale");
 }
 
 /** "14:05" 24-hour local time. */
@@ -280,13 +360,13 @@ export interface DayGroup {
 }
 
 /** Group events (in the given order) by local day; groups keep first-seen order. */
-export function groupByDay(events: readonly ActivityEvent[], now: number = Date.now(), tz?: string): DayGroup[] {
+export function groupByDay(events: readonly ActivityEvent[], now: number = Date.now(), tz?: string, t?: TFunction<"activity">): DayGroup[] {
   const groups = new Map<string, DayGroup>();
   for (const e of events) {
     const key = localDayKey(e.ts, tz);
     let g = groups.get(key);
     if (!g) {
-      g = { key, label: dayLabel(key, now, tz), events: [] };
+      g = { key, label: dayLabel(key, now, tz, t), events: [] };
       groups.set(key, g);
     }
     g.events.push(e);
@@ -304,16 +384,17 @@ export interface DayBucket {
 }
 
 /** One bucket per local day for the last `days` days (oldest first, today last), zero-filled. */
-export function eventsPerDay(events: readonly ActivityEvent[], now: number = Date.now(), days = 14, tz?: string): DayBucket[] {
+export function eventsPerDay(events: readonly ActivityEvent[], now: number = Date.now(), days = 14, tz?: string, t?: TFunction<"activity">): DayBucket[] {
   const today = localDayKey(now, tz);
+  const locale = intlLocale(t ?? english());
   const buckets: DayBucket[] = [];
   const index = new Map<string, DayBucket>();
   for (let i = days - 1; i >= 0; i--) {
     const key = shiftKey(today, -i);
     const b: DayBucket = {
       key,
-      label: formatDayKey(key, { month: "short", day: "numeric" }),
-      title: formatDayKey(key, { weekday: "short", month: "short", day: "numeric" }),
+      label: formatDayKey(key, { month: "short", day: "numeric" }, locale),
+      title: formatDayKey(key, { weekday: "short", month: "short", day: "numeric" }, locale),
       counts: { error: 0, warn: 0, success: 0, info: 0 },
     };
     buckets.push(b);
@@ -388,11 +469,11 @@ export function summarize(events: readonly ActivityEvent[], now: number = Date.n
   return s;
 }
 
-/** Plain-text export, one line per event, in the order given. */
-export function exportText(events: readonly ActivityEvent[], tz?: string): string {
+/** Plain-text export, one line per event, in the order given; labels in the caller's language, messages as sent. */
+export function exportText(events: readonly ActivityEvent[], tz?: string, t?: TFunction<"activity">): string {
   return events
     .map((e) => {
-      return `${formatStamp(e.ts, tz)} [${SEVERITY_LABEL[e.severity] ?? e.severity}] ${typeLabel(e.type)} - ${e.message}`.replace(/\s+/g, " ");
+      return `${formatStamp(e.ts, tz)} [${severityLabel(e.severity, t)}] ${typeLabel(e.type, t)} - ${e.message}`.replace(/\s+/g, " ");
     })
     .join("\n");
 }
