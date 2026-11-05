@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { LineAreaChart } from "../../ui/LineAreaChart";
 import { Tag } from "../../ui/Tag";
 import { cellText, collectTables, isNum, isObj, suggestCharts, topMetrics, type GenericTable } from "./normalize";
@@ -6,15 +7,16 @@ import { JsonDisclosure } from "./parts";
 
 /** Recursively render any JSON value: scalars as text, objects as key/value lists, arrays of objects as tables or cards. */
 export function GenericValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
+  const { t } = useTranslation("toolEval");
   if (value == null) return <span className="te-faint">–</span>;
-  if (typeof value === "boolean") return <Tag tone={value ? "good" : "neutral"}>{value ? "yes" : "no"}</Tag>;
+  if (typeof value === "boolean") return <Tag tone={value ? "good" : "neutral"}>{value ? t("generic.yes") : t("generic.no")}</Tag>;
   if (isNum(value)) return <span className="mono">{fmtNum(value, 3)}</span>;
   if (typeof value === "string") {
     return value.length > 120 || value.includes("\n") ? <pre className="te-pre">{value}</pre> : <span>{value}</span>;
   }
   if (depth > 5) return <code>{JSON.stringify(value).slice(0, 200)}</code>;
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="te-faint">empty</span>;
+    if (value.length === 0) return <span className="te-faint">{t("generic.empty")}</span>;
     if (value.every((v) => v == null || typeof v !== "object")) {
       return (
         <span className="te-valuelist">
@@ -41,12 +43,12 @@ export function GenericValue({ value, depth = 0 }: { value: unknown; depth?: num
             <GenericValue value={v} depth={depth + 1} />
           </div>
         ))}
-        {value.length > 100 ? <span className="te-faint">… {value.length - 100} more</span> : null}
+        {value.length > 100 ? <span className="te-faint">{t("generic.more", { n: value.length - 100 })}</span> : null}
       </div>
     );
   }
   const entries = Object.entries(value as Record<string, unknown>);
-  if (!entries.length) return <span className="te-faint">empty</span>;
+  if (!entries.length) return <span className="te-faint">{t("generic.empty")}</span>;
   return (
     <dl className="te-kv">
       {entries.map(([k, v]) => (
@@ -62,6 +64,7 @@ export function GenericValue({ value, depth = 0 }: { value: unknown; depth?: num
 }
 
 export function MiniTable({ columns, rows }: { columns: string[]; rows: Record<string, unknown>[] }) {
+  const { t } = useTranslation("toolEval");
   return (
     <div className="te-tablewrap">
       <table className="te-table">
@@ -86,13 +89,14 @@ export function MiniTable({ columns, rows }: { columns: string[]; rows: Record<s
           ))}
         </tbody>
       </table>
-      {rows.length > 300 ? <p className="te-faint">Showing 300 of {rows.length} rows.</p> : null}
+      {rows.length > 300 ? <p className="te-faint">{t("generic.showingRows", { total: rows.length })}</p> : null}
     </div>
   );
 }
 
 function TableWithCharts({ table }: { table: GenericTable }) {
-  const charts = suggestCharts(table);
+  const { t } = useTranslation("toolEval");
+  const charts = suggestCharts(table, undefined, t);
   return (
     <section className="te-section">
       <h3>{table.title}</h3>
@@ -118,29 +122,30 @@ function TableWithCharts({ table }: { table: GenericTable }) {
 
 /** Metric-first view for results whose structure is not known in advance. */
 export function GenericResult({ result, compact = false }: { result: unknown; compact?: boolean }) {
+  const { t } = useTranslation("toolEval");
   const tiles = topMetrics(result);
   const tables = collectTables(result);
   const meta = isObj(result) ? (isObj(result.config) ? result.config : null) : null;
   return (
     <div className="te-generic">
       {tiles.length && !compact ? (
-        <div className="te-tiles" role="list" aria-label="Key numbers">
-          {tiles.map((t) => (
-            <div key={t.path} className="te-tile" role="listitem" title={t.path}>
-              <span className="eyebrow">{t.label}</span>
-              <b className="big-num">{typeof t.value === "number" ? fmtNum(t.value, 3) : String(t.value)}</b>
+        <div className="te-tiles" role="list" aria-label={t("generic.keyNumbers")}>
+          {tiles.map((tile) => (
+            <div key={tile.path} className="te-tile" role="listitem" title={tile.path}>
+              <span className="eyebrow">{tile.label}</span>
+              <b className="big-num">{typeof tile.value === "number" ? fmtNum(tile.value, 3) : String(tile.value)}</b>
             </div>
           ))}
         </div>
       ) : null}
-      {tables.map((t) => (
-        <TableWithCharts key={t.path} table={t} />
+      {tables.map((table) => (
+        <TableWithCharts key={table.path} table={table} />
       ))}
-      {!compact && !tiles.length && !tables.length ? <p className="te-faint">No recognisable numbers in this result. The full data is below.</p> : null}
+      {!compact && !tiles.length && !tables.length ? <p className="te-faint">{t("generic.noNumbers")}</p> : null}
       {meta && !compact ? (
         <details className="te-disclosure">
           <summary>
-            <span>Configuration reported by the tool</span>
+            <span>{t("generic.toolConfig")}</span>
           </summary>
           <div className="te-disclosure__body">
             <GenericValue value={meta} />
@@ -151,7 +156,7 @@ export function GenericResult({ result, compact = false }: { result: unknown; co
         <>
           <details className="te-disclosure">
             <summary>
-              <span>All values</span>
+              <span>{t("generic.allValues")}</span>
             </summary>
             <div className="te-disclosure__body">
               <GenericValue value={result} />

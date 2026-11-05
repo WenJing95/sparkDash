@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { SparkSnapshot, ToolEvalRun, ToolEvalRunRequest } from "../../../api/types";
 import "../../../styles/dialogs.css";
 import "../../../styles/tooleval.css";
@@ -34,11 +35,13 @@ const SCENARIO_TYPES = new Set(["tool-eval", "context-pressure"]);
 
 /** One component serves all seven Tool Eval page types: setup, configure, run, results and history. */
 export function ToolEvalBenchPage({ type, spark }: { type: string; spark: SparkSnapshot | null }) {
-  if (!spark) return <p className="te-empty te-empty--big">Add a Spark to run Tool Eval Bench.</p>;
+  const { t } = useTranslation("toolEval");
+  if (!spark) return <p className="te-empty te-empty--big">{t("page.noSpark")}</p>;
   return <ToolEvalBench key={`${spark.id}:${type}`} type={type} spark={spark} />;
 }
 
 function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) {
+  const { t } = useTranslation("toolEval");
   const { spec, error: specError, retry: retrySpec } = useToolEvalSpec();
   const status = useToolEvalStatus(spark.id);
   const [state, setState] = useState<FormState>(() => loadState(type) ?? defaultSimpleState(type));
@@ -67,7 +70,7 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
     setViewedId(run.id);
     setVersion((v) => v + 1);
     // Only leave the Run tab; someone reading History or Results is not yanked away.
-    if (run.status === "completed") setTab((t) => (t === "run" ? "results" : t));
+    if (run.status === "completed") setTab((cur) => (cur === "run" ? "results" : cur));
   }, []);
   const runner = useToolEvalRunner(spark.id, type, onSettled);
   const { followed } = runner;
@@ -88,7 +91,7 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
   // A typed key only ever goes with a custom base URL, never to the local server.
   const sendKey = apiKeyFor(state, apiKey);
   const built = useMemo(() => (spec ? buildRequest(spec, type, state, "") : null), [spec, type, state]);
-  const client = useMemo(() => (spec ? validateState(spec, type, state) : { fields: {}, form: [] }), [spec, type, state]);
+  const client = useMemo(() => (spec ? validateState(spec, type, state, t) : { fields: {}, form: [] }), [spec, type, state, t]);
   const clientOk = Object.keys(client.fields).length === 0 && client.form.length === 0;
   const previewReq: ToolEvalRunRequest | null = built && clientOk ? { type, options: built.options, extraArgs: built.extraArgs, port: built.port, useSavedKey: sendKey ? false : undefined } : null;
   const preview = useToolEvalPreview(spark.id, previewReq);
@@ -99,7 +102,7 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
   // A run just started has no job for ~150 ms (until the first poll): it is already busy.
   const followedStarting = followed?.run.status === "running" && !followed.job && runner.polling;
   const followedRunning = (followed?.run.status === "running" && followed.job?.status === "running") || followedStarting;
-  const busyReason = followedRunning ? "A run is already in progress on this Spark." : runner.active && runner.active.status === "running" && !followed ? "Another Tool Eval Bench job is running on this Spark." : runner.busy ? "Another Tool Eval Bench job is running on this Spark." : null;
+  const busyReason = followedRunning ? t("page.busyFollowed") : runner.active && runner.active.status === "running" && !followed ? t("page.busyOther") : runner.busy ? t("page.busyOther") : null;
   const baseUrl = typeof built?.options["base-url"] === "string" ? (built.options["base-url"] as string) : `http://127.0.0.1:${port}`;
 
   const start = async () => {
@@ -144,11 +147,11 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
 
   return (
     <div className="te" ref={rootRef}>
-      {!spark.online ? <Notice tone="warn" title={`${spark.name} is offline`}>The tool runs on the Spark, so runs and checks need it online. You can still configure and review history.</Notice> : null}
+      {!spark.online ? <Notice tone="warn" title={t("page.offlineTitle", { name: spark.name })}>{t("page.offlineBody")}</Notice> : null}
       {runner.elsewhere ? (
-        <Notice tone="info" title="Another Tool Eval Bench run is in progress on this Spark">
-          It belongs to the {benchTypeById(runner.elsewhere.type)?.label ?? runner.elsewhere.type ?? "other"} page, so it is not shown here.{" "}
-          <a href={idToPath(benchId(benchTypeById(runner.elsewhere.type)?.id ?? "tool-eval"))}>Open that page</a>
+        <Notice tone="info" title={t("page.elsewhereTitle")}>
+          {t("page.elsewhereBody", { page: benchTypeById(runner.elsewhere.type)?.label ?? runner.elsewhere.type ?? t("page.elsewhereOther") })}{" "}
+          <a href={idToPath(benchId(benchTypeById(runner.elsewhere.type)?.id ?? "tool-eval"))}>{t("page.elsewhereOpen")}</a>
         </Notice>
       ) : null}
       <SetupCard spark={spark} spec={spec} status={status.status} loading={status.loading} error={status.error} reload={status.reload} busy={followedRunning} />
@@ -156,20 +159,20 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
       <div className="te-tabs">
         <Tabs
           prefix={uid}
-          label="Tool Eval Bench sections"
+          label={t("page.sections")}
           value={tab}
           onChange={setTab}
           items={[
-            { id: "run", label: "Configure and run" },
-            { id: "results", label: "Results" },
-            { id: "history", label: `History${runner.runs ? ` (${runner.runs.length})` : ""}` },
+            { id: "run", label: t("page.tabRun") },
+            { id: "results", label: t("page.tabResults") },
+            { id: "history", label: runner.runs ? t("page.tabHistoryCount", { count: runner.runs.length }) : t("page.tabHistory") },
           ]}
         />
         {showStrip ? (
-          <button type="button" className="te-strip" onClick={() => setTab("run")} aria-label="Run in progress, show progress">
+          <button type="button" className="te-strip" onClick={() => setTab("run")} aria-label={t("page.stripAria")}>
             <span className="te-strip__dot" aria-hidden />
             <span>
-              Run in progress{progress?.total ? ` · ${progress.done}/${progress.total}` : ""}
+              {t("page.strip")}{progress?.total ? ` · ${progress.done}/${progress.total}` : ""}
               {progress?.finalScore != null ? ` · ${fmtNum(progress.finalScore, 1)}` : ""}
             </span>
           </button>
@@ -198,31 +201,31 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
             />
           ) : null}
           {runner.listError && !runner.runs ? (
-            <Notice tone="warn" title="Could not read this Spark's runs" actions={<button type="button" className="btn btn--sm" onClick={() => void runner.reloadRuns()}>Retry</button>}>
+            <Notice tone="warn" title={t("page.runsError")} actions={<button type="button" className="btn btn--sm" onClick={() => void runner.reloadRuns()}>{t("common.retry")}</button>}>
               {runner.listError}
             </Notice>
           ) : null}
           {specError ? (
-            <Notice tone="bad" title="Could not load the option list" actions={<button type="button" className="btn btn--sm" onClick={retrySpec}>Retry</button>}>
+            <Notice tone="bad" title={t("page.specError")} actions={<button type="button" className="btn btn--sm" onClick={retrySpec}>{t("common.retry")}</button>}>
               {specError}
             </Notice>
           ) : !spec ? (
             <Skeleton lines={8} className="te-card te-card--pad" />
           ) : (
             <div className={view === "simple" ? "te-layout te-layout--even" : "te-layout"}>
-              <section className="panel te-card te-card--form" aria-label="Configuration">
+              <section className="panel te-card te-card--form" aria-label={t("page.configuration")}>
                 <div className="te-viewbar">
                   <Tabs
                     prefix={`${uid}-view`}
-                    label="Configuration view"
+                    label={t("page.configView")}
                     value={view}
                     onChange={setView}
                     items={[
-                      { id: "simple", label: "Simple" },
-                      { id: "advanced", label: "Advanced" },
+                      { id: "simple", label: t("page.simple") },
+                      { id: "advanced", label: t("page.advanced") },
                     ]}
                   />
-                  <p>{view === "simple" ? "Pick a ready-made run." : "Every option the tool offers."}</p>
+                  <p>{view === "simple" ? t("page.simpleHint") : t("page.advancedHint")}</p>
                 </div>
                 <div role="tabpanel" id={panelId(`${uid}-view`, view)} aria-labelledby={tabId(`${uid}-view`, view)}>
                 {view === "simple" ? (
@@ -271,10 +274,10 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
             </section>
           ) : (
             <div className="te-empty te-empty--big">
-              <b>No result to show yet</b>
-              <p>Finish a run, or open one from the history.</p>
+              <b>{t("page.noResult")}</b>
+              <p>{t("page.noResultHint")}</p>
               <button type="button" className="btn" onClick={() => setTab("run")}>
-                Configure a run
+                {t("page.configureRun")}
               </button>
             </div>
           )}
@@ -305,11 +308,11 @@ function ToolEvalBench({ type, spark }: { type: string; spark: SparkSnapshot }) 
       ) : null}
 
       <footer className="te-credit">
-        Powered by{" "}
-        <a href="https://github.com/SeraphimSerapis/tool-eval-bench/" target="_blank" rel="noopener noreferrer">
-          tool-eval-bench
-        </a>{" "}
-        by SeraphimSerapis. sparkDash adds the interface; the benchmarks are the tool's own.
+        <Trans
+          t={t}
+          i18nKey="page.credit"
+          components={{ link: <a href="https://github.com/SeraphimSerapis/tool-eval-bench/" target="_blank" rel="noopener noreferrer" /> }}
+        />
       </footer>
     </div>
   );

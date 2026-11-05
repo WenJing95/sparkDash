@@ -1,4 +1,5 @@
-import { humanizeKey } from "./format";
+import type { TFunction } from "i18next";
+import { enT, humanizeKey } from "./format";
 
 /**
  * Defensive readers for the tool's result JSON. The exact nested field names are not
@@ -63,6 +64,46 @@ export const CATEGORY_NAMES: Record<string, string> = {
   O: "Structured output",
   P: "Hard mode",
 };
+
+/** CATEGORY_NAMES in the current language; null for an unknown letter. */
+export function categoryName(t: TFunction<"toolEval">, id: string): string | null {
+  switch (id) {
+    case "A":
+      return t("category.A");
+    case "B":
+      return t("category.B");
+    case "C":
+      return t("category.C");
+    case "D":
+      return t("category.D");
+    case "E":
+      return t("category.E");
+    case "F":
+      return t("category.F");
+    case "G":
+      return t("category.G");
+    case "H":
+      return t("category.H");
+    case "I":
+      return t("category.I");
+    case "J":
+      return t("category.J");
+    case "K":
+      return t("category.K");
+    case "L":
+      return t("category.L");
+    case "M":
+      return t("category.M");
+    case "N":
+      return t("category.N");
+    case "O":
+      return t("category.O");
+    case "P":
+      return t("category.P");
+    default:
+      return null;
+  }
+}
 
 export interface NormCategory {
   id: string;
@@ -313,7 +354,11 @@ export interface ChartSpec {
 }
 
 /** Suggest line charts for a table: a numeric x column (depth, concurrency…) against a numeric metric. */
-export function suggestCharts(table: GenericTable, maxCharts = 6): ChartSpec[] {
+export function suggestCharts(table: GenericTable, maxCharts = 6, tr?: TFunction<"toolEval">): ChartSpec[] {
+  return suggestChartsIn(tr ?? enT(), table, maxCharts);
+}
+
+function suggestChartsIn(t: TFunction<"toolEval">, table: GenericTable, maxCharts: number): ChartSpec[] {
   const rows = table.rows;
   if (rows.length < 2) return [];
   const numericCols = table.columns.filter((c) => rows.some((r) => isNum(r[c])) && rows.every((r) => r[c] == null || isNum(r[c])));
@@ -336,7 +381,10 @@ export function suggestCharts(table: GenericTable, maxCharts = 6): ChartSpec[] {
       }
       if (byX.size < 2) continue;
       const pts = [...byX.entries()].sort((a, b) => a[0] - b[0]).map(([x, vs]) => ({ x, label: String(x), value: vs.reduce((a, b) => a + b, 0) / vs.length }));
-      charts.push({ title: `${humanizeKey(y)} by ${humanizeKey(xKey).toLowerCase()}${g != null ? ` (${humanizeKey(groupKey as string).toLowerCase()} ${g})` : ""}`, xKey, yKey: y, group: g, points: pts });
+      const yName = humanizeKey(y);
+      const xName = humanizeKey(xKey).toLowerCase();
+      const title = g != null ? t("chart.titleGroup", { y: yName, x: xName, groupKey: humanizeKey(groupKey as string).toLowerCase(), group: g }) : t("chart.title", { y: yName, x: xName });
+      charts.push({ title, xKey, yKey: y, group: g, points: pts });
     }
   }
   return charts;

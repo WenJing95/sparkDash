@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { ToolEvalRunStatus } from "../../../api/types";
 
 export type StatusTone = "good" | "bad" | "warn" | "acc" | "neutral";
@@ -18,18 +19,18 @@ export function statusTone(status: ToolEvalRunStatus): StatusTone {
   }
 }
 
-export function statusLabel(status: ToolEvalRunStatus, watching = true): string {
+export function statusLabel(t: TFunction<"toolEval">, status: ToolEvalRunStatus, watching = true): string {
   switch (status) {
     case "running":
-      return watching ? "Running" : "Running (not watched)";
+      return watching ? t("status.running") : t("status.runningUnwatched");
     case "completed":
-      return "Completed";
+      return t("status.completed");
     case "failed":
-      return "Failed";
+      return t("status.failed");
     case "stopped":
-      return "Stopped";
+      return t("status.stopped");
     case "gone":
-      return "Gone";
+      return t("status.gone");
     default:
       return status;
   }

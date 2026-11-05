@@ -1,8 +1,15 @@
+import type { TFunction } from "i18next";
 import type { ToolEvalRun } from "../../../api/types";
+import { enT } from "./format";
 import { CATEGORY_NAMES, flattenNumbers, normalizeToolResult, type NormToolResult, type ScenarioStatus } from "./normalize";
 
+export type HeadlineId = "score" | "deployability" | "responsiveness" | "passed" | "partial" | "failed" | "safety";
+
 export interface Delta {
+  /** English label (headline rows) or the category letter; the UI shows `headlineLabel(t, metric)` for headline rows. */
   label: string;
+  /** Set on headline rows. */
+  metric?: HeadlineId;
   a: number | null;
   b: number | null;
   /** b - a (null when either side is missing) */
@@ -53,8 +60,9 @@ export interface ToolCompare {
 
 const RANK: Record<ScenarioStatus, number> = { pass: 3, partial: 2, fail: 1, other: 0 };
 
-const d = (label: string, a: number | null, b: number | null, higherIsBetter = true, count = false): Delta => ({
+const d = (label: string, a: number | null, b: number | null, higherIsBetter = true, count = false, metric?: HeadlineId): Delta => ({
   label,
+  ...(metric ? { metric } : {}),
   a,
   b,
   delta: a != null && b != null ? b - a : null,
@@ -68,13 +76,13 @@ export function compareToolResults(a: NormToolResult, b: NormToolResult): ToolCo
   // Counts come from scenarios: a side without any has no counts, not zero of everything.
   const cnt = (n: NormToolResult, has: boolean, k: "pass" | "partial" | "fail") => (has ? n.counts[k] : null);
   const headline = [
-    d("Score", a.score, b.score),
-    d("Deployability", a.deployability, b.deployability),
-    d("Responsiveness", a.responsiveness, b.responsiveness),
-    d("Passed", cnt(a, hasScenarios.a, "pass"), cnt(b, hasScenarios.b, "pass"), true, true),
-    d("Partial", cnt(a, hasScenarios.a, "partial"), cnt(b, hasScenarios.b, "partial"), true, true),
-    d("Failed", cnt(a, hasScenarios.a, "fail"), cnt(b, hasScenarios.b, "fail"), false, true),
-    d("Safety warnings", a.safety.length, b.safety.length, false, true),
+    d("Score", a.score, b.score, true, false, "score"),
+    d("Deployability", a.deployability, b.deployability, true, false, "deployability"),
+    d("Responsiveness", a.responsiveness, b.responsiveness, true, false, "responsiveness"),
+    d("Passed", cnt(a, hasScenarios.a, "pass"), cnt(b, hasScenarios.b, "pass"), true, true, "passed"),
+    d("Partial", cnt(a, hasScenarios.a, "partial"), cnt(b, hasScenarios.b, "partial"), true, true, "partial"),
+    d("Failed", cnt(a, hasScenarios.a, "fail"), cnt(b, hasScenarios.b, "fail"), false, true, "failed"),
+    d("Safety warnings", a.safety.length, b.safety.length, false, true, "safety"),
   ];
   const ids = [...new Set([...a.categories.map((c) => c.id), ...b.categories.map((c) => c.id)])].sort();
   const categories = ids.map((id) => {
@@ -100,6 +108,26 @@ export function compareToolResults(a: NormToolResult, b: NormToolResult): ToolCo
   const order = { regression: 0, improvement: 1, changed: 2, "only-a": 3, "only-b": 4 } as const;
   const changes = rows.filter((r): r is ScenarioChange => r.kind !== "same").sort((x, y) => order[x.kind] - order[y.kind] || x.id.localeCompare(y.id, undefined, { numeric: true }));
   return { headline, categories, rows, changes, unchanged: rows.length - changes.length, hasScenarios };
+}
+
+/** Display name of a headline row in the current language. */
+export function headlineLabel(t: TFunction<"toolEval">, id: HeadlineId): string {
+  switch (id) {
+    case "score":
+      return t("compare.metric.score");
+    case "deployability":
+      return t("compare.metric.deployability");
+    case "responsiveness":
+      return t("compare.metric.responsiveness");
+    case "passed":
+      return t("compare.metric.passed");
+    case "partial":
+      return t("compare.metric.partial");
+    case "failed":
+      return t("compare.metric.failed");
+    default:
+      return t("compare.metric.safety");
+  }
 }
 
 export interface MetricChange {
@@ -133,19 +161,25 @@ export function compareGeneric(a: unknown, b: unknown, limit = 200): { changed: 
 
 const IGNORED_OPTIONS = new Set(["label", "output-dir", "api-key", "header", "diff", "resume"]);
 
+type CaveatRun = Pick<ToolEvalRun, "model" | "baseUrl" | "options" | "type">;
+
 /** Differences in model / endpoint / options that make a comparison less meaningful. */
-export function configCaveats(a: Pick<ToolEvalRun, "model" | "baseUrl" | "options" | "type">, b: Pick<ToolEvalRun, "model" | "baseUrl" | "options" | "type">): string[] {
+export function configCaveats(a: CaveatRun, b: CaveatRun, tr?: TFunction<"toolEval">): string[] {
+  return configCaveatsIn(tr ?? enT(), a, b);
+}
+
+function configCaveatsIn(t: TFunction<"toolEval">, a: CaveatRun, b: CaveatRun): string[] {
   const out: string[] = [];
-  if (a.type !== b.type) out.push("The runs are of different benchmark types.");
-  if ((a.model ?? "") !== (b.model ?? "")) out.push(`Different models: ${a.model ?? "auto"} vs ${b.model ?? "auto"}.`);
-  if (a.baseUrl !== b.baseUrl) out.push(`Different endpoints: ${a.baseUrl} vs ${b.baseUrl}.`);
+  if (a.type !== b.type) out.push(t("caveats.types"));
+  if ((a.model ?? "") !== (b.model ?? "")) out.push(t("caveats.models", { a: a.model ?? t("caveats.auto"), b: b.model ?? t("caveats.auto") }));
+  if (a.baseUrl !== b.baseUrl) out.push(t("caveats.endpoints", { a: a.baseUrl, b: b.baseUrl }));
   const keys = new Set([...Object.keys(a.options ?? {}), ...Object.keys(b.options ?? {})]);
   const differing: string[] = [];
   for (const k of keys) {
     if (IGNORED_OPTIONS.has(k) || k === "model" || k === "base-url") continue;
     if (JSON.stringify(a.options?.[k] ?? null) !== JSON.stringify(b.options?.[k] ?? null)) differing.push(k);
   }
-  if (differing.length) out.push(`Different options: ${differing.map((k) => `--${k}`).join(", ")}.`);
+  if (differing.length) out.push(t("caveats.options", { flags: differing.map((k) => `--${k}`).join(", ") }));
   return out;
 }
 

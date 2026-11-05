@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { ToolEvalLine } from "../../../api/types";
 import { AlertTriangleIcon, CheckIcon, InfoIcon } from "../../ui/icons";
 
 /** Copy text to the clipboard with a short "Copied" confirmation. */
-export function CopyButton({ text, label = "Copy", className = "" }: { text: string | (() => string); label?: string; className?: string }) {
+export function CopyButton({ text, label, className = "" }: { text: string | (() => string); label?: string; className?: string }) {
+  const { t } = useTranslation("toolEval");
   const [state, setState] = useState<"idle" | "ok" | "err">("idle");
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -33,31 +35,32 @@ export function CopyButton({ text, label = "Copy", className = "" }: { text: str
     <button type="button" className={`btn btn--sm btn--ghost ${className}`} onClick={copy} aria-live="polite">
       {state === "ok" ? (
         <>
-          <CheckIcon className="h-3.5 w-3.5" /> Copied
+          <CheckIcon className="h-3.5 w-3.5" /> {t("copy.copied")}
         </>
       ) : state === "err" ? (
-        "Copy failed"
+        t("copy.failed")
       ) : (
-        label
+        label ?? t("copy.copy")
       )}
     </button>
   );
 }
 
 /** Collapsible pretty-printed JSON with Copy. */
-export function JsonDisclosure({ value, title = "Raw JSON", defaultOpen = false }: { value: unknown; title?: string; defaultOpen?: boolean }) {
+export function JsonDisclosure({ value, title, defaultOpen = false }: { value: unknown; title?: string; defaultOpen?: boolean }) {
+  const { t } = useTranslation("toolEval");
   const [open, setOpen] = useState(defaultOpen);
   const text = open ? safeStringify(value) : "";
   return (
     <details className="te-disclosure" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
       <summary>
-        <span>{title}</span>
-        <span className="te-faint">{open ? "" : "show"}</span>
+        <span>{title ?? t("json.raw")}</span>
+        <span className="te-faint">{open ? "" : t("json.show")}</span>
       </summary>
       {open ? (
         <div className="te-json">
           <div className="te-json__bar">
-            <CopyButton text={() => safeStringify(value)} label="Copy JSON" />
+            <CopyButton text={() => safeStringify(value)} label={t("json.copy")} />
           </div>
           <pre>{text}</pre>
         </div>
@@ -99,6 +102,7 @@ export function Skeleton({ lines = 3, className = "" }: { lines?: number; classN
 
 /** Streamed output with stderr lines dimmed; sticks to the bottom until the reader scrolls up. */
 export function RunTerminal({ lines, partial = "", running, maxVisible = 1500 }: { lines: readonly ToolEvalLine[]; partial?: string; running?: boolean; maxVisible?: number }) {
+  const { t } = useTranslation("toolEval");
   const ref = useRef<HTMLPreElement>(null);
   const stick = useRef(true);
   const shown = lines.length > maxVisible ? lines.slice(lines.length - maxVisible) : lines;
@@ -113,13 +117,13 @@ export function RunTerminal({ lines, partial = "", running, maxVisible = 1500 }:
       className="live-term te-term"
       tabIndex={0}
       role="log"
-      aria-label="Raw tool output"
+      aria-label={t("terminal.aria")}
       onScroll={(e) => {
         const el = e.currentTarget;
         stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 28;
       }}
     >
-      {lines.length > shown.length ? <span className="live-term__note">… {(lines.length - shown.length).toLocaleString()} earlier lines hidden (copy gets everything)</span> : null}
+      {lines.length > shown.length ? <span className="live-term__note">{t("terminal.hidden", { n: (lines.length - shown.length).toLocaleString() })}</span> : null}
       {shown.map((l) => (
         <span key={l.seq} className={l.stream === "err" ? "te-term__err" : undefined}>
           {l.text}
@@ -127,7 +131,7 @@ export function RunTerminal({ lines, partial = "", running, maxVisible = 1500 }:
         </span>
       ))}
       {partial}
-      {!shown.length && !partial ? (running ? "Waiting for output…" : "No output.") : null}
+      {!shown.length && !partial ? (running ? t("terminal.waiting") : t("terminal.empty")) : null}
       {running ? <span className="live-term__cursor" aria-hidden /> : null}
     </pre>
   );

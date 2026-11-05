@@ -17,22 +17,27 @@ import { formatContextSize } from "../../shared/prefillBench.js";
 import { QUALITY_CATEGORIES, checkQualityComparable } from "../../shared/qualityBench.js";
 import type { DecodeBenchJob, PrefillBenchJob, QualityBenchJob, QualityCategory, ToolEvalRun } from "../../api/types";
 import { compareToolResults, configCaveats, type Delta as CompareDelta } from "../bench/tooleval/compare";
-import { scoreTier } from "../bench/tooleval/format";
-import { CATEGORY_NAMES, type NormToolResult } from "../bench/tooleval/normalize";
+import { ratingText, scoreTier, tierLabel } from "../bench/tooleval/format";
+import { CATEGORY_NAMES, categoryName, type NormToolResult } from "../bench/tooleval/normalize";
 
 /**
- * Tool-eval words on the card (category names, tier names, setup caveats) stay in the tool's
- * English for now; callers may already pass a toolEval `t`, which the Tool Eval change uses.
+ * Tool-eval words on the card (category names, tier names, setup caveats) come from the
+ * "toolEval" namespace. A caller that passes its toolEval `t` gets them in the UI language;
+ * without it they stay in the tool's English.
  */
-function toolCategoryText(c: { id: string; name?: string | null }, _te: TFunction<"toolEval"> | undefined, fallback: string): string {
-  return c.name ?? CATEGORY_NAMES[c.id] ?? fallback;
+function toolCategoryText(c: { id: string; name?: string | null }, te: TFunction<"toolEval"> | undefined, fallback: string): string {
+  const known = CATEGORY_NAMES[c.id];
+  if (te && known && (c.name == null || c.name === known)) return categoryName(te, c.id) ?? known;
+  return c.name ?? known ?? fallback;
 }
 
-/** The run's rating word: the tool's text, else the score tier. */
-function toolRatingText(data: NormToolResult, _te: TFunction<"toolEval"> | undefined): string {
+/** The run's rating word: the tool's text (a known tier name translated when `te` is given), else the score tier. */
+function toolRatingText(data: NormToolResult, te: TFunction<"toolEval"> | undefined): string {
   const raw = data.rating?.replace(/[★☆]+/g, "").trim() || "";
-  if (raw) return raw;
-  return scoreTier(data.score)?.label ?? "";
+  if (raw) return te ? ratingText(te, raw) : raw;
+  const tier = scoreTier(data.score);
+  if (!tier) return "";
+  return te ? tierLabel(te, tier.id) : tier.label;
 }
 
 /**
@@ -690,7 +695,7 @@ export function buildToolEvalCompareShareCard(
           unchanged: cmp.unchanged,
         }
       : null;
-  const caveats = configCaveats(runA, runB);
+  const caveats = configCaveats(runA, runB, src.te);
   const caveat = caveats.length
     ? caveats.length > 1
       ? t("card.compare.more", { caveat: caveats[0], count: caveats.length - 1 })

@@ -1,12 +1,25 @@
 import { useMemo, useState } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type { ToolEvalRun } from "../../../api/types";
 import { Tag } from "../../ui/Tag";
 import { fmtDate, fmtNum } from "./format";
-import { compareToolResults, deltaDigits } from "./compare";
-import type { NormToolResult, ScenarioStatus } from "./normalize";
+import { compareToolResults, deltaDigits, headlineLabel } from "./compare";
+import { CATEGORY_NAMES, categoryName, type NormToolResult, type ScenarioStatus } from "./normalize";
 
 const TONE: Record<ScenarioStatus, "good" | "warn" | "bad" | "neutral"> = { pass: "good", partial: "warn", fail: "bad", other: "neutral" };
-const LABEL: Record<ScenarioStatus, string> = { pass: "Pass", partial: "Partial", fail: "Fail", other: "Other" };
+function statusName(t: TFunction<"toolEval">, s: ScenarioStatus): string {
+  switch (s) {
+    case "pass":
+      return t("sbs.pass");
+    case "partial":
+      return t("sbs.partial");
+    case "fail":
+      return t("sbs.fail");
+    default:
+      return t("sbs.other");
+  }
+}
 
 function Delta({ a, b, higherIsBetter = true, suffix = "", digits }: { a: number | null; b: number | null; higherIsBetter?: boolean; suffix?: string; digits: number }) {
   if (a == null || b == null) return <span className="te-faint">–</span>;
@@ -25,19 +38,20 @@ function Delta({ a, b, higherIsBetter = true, suffix = "", digits }: { a: number
 const count = (n: NormToolResult, v: number) => (n.scenarios.length ? v : "–");
 
 function RunHead({ side, run, n, other, sparkName }: { side: "A" | "B"; run: ToolEvalRun; n: NormToolResult; other: NormToolResult; sparkName?: string | null }) {
+  const { t } = useTranslation("toolEval");
   return (
     <div className={`te-sbs__head te-sbs__head--${side.toLowerCase()}`}>
-      <span className="eyebrow">Run {side}{sparkName ? ` · ${sparkName}` : ""}</span>
+      <span className="eyebrow">{t("sbs.run", { side })}{sparkName ? ` · ${sparkName}` : ""}</span>
       <b className="te-sbs__title">{run.label || fmtDate(run.startedAt)}</b>
-      <span className="te-faint">{run.label ? `${fmtDate(run.startedAt)} · ` : ""}{run.model ?? n.model ?? "auto model"}</span>
+      <span className="te-faint">{run.label ? `${fmtDate(run.startedAt)} · ` : ""}{run.model ?? n.model ?? t("history.autoModel")}</span>
       <div className="te-sbs__score">
         <span className="te-sbs__num">{n.score != null ? fmtNum(n.score, 1) : "–"}</span>
         {side === "B" ? <Delta a={other.score} b={n.score} digits={deltaDigits(other.score, n.score)} /> : null}
       </div>
       <div className="te-sbs__counts mono">
-        <span className="is-pass">{count(n, n.counts.pass)} pass</span>
-        <span className="is-partial">{count(n, n.counts.partial)} partial</span>
-        <span className="is-fail">{count(n, n.counts.fail)} fail</span>
+        <span className="is-pass">{count(n, n.counts.pass)} {t("live.count.pass")}</span>
+        <span className="is-partial">{count(n, n.counts.partial)} {t("live.count.partial")}</span>
+        <span className="is-fail">{count(n, n.counts.fail)} {t("live.count.fail")}</span>
       </div>
     </div>
   );
@@ -62,10 +76,11 @@ export function SideBySide({
   sparkNameB?: string | null;
   onSwap: () => void;
 }) {
+  const { t } = useTranslation("toolEval");
   const [onlyDiff, setOnlyDiff] = useState(true);
   // One comparison, shared with the tests: the same row kinds and deltas everywhere.
   const cmp = useMemo(() => compareToolResults(a, b), [a, b]);
-  const cats = cmp.categories.map((c) => ({ id: c.id, name: c.name ?? "", a: c.a, b: c.b, digits: c.digits }));
+  const cats = cmp.categories.map((c) => ({ id: c.id, name: (c.name === CATEGORY_NAMES[c.id] ? categoryName(t, c.id) : c.name) ?? "", a: c.a, b: c.b, digits: c.digits }));
   const rows = cmp.rows;
   const hasRows = cmp.hasScenarios.a || cmp.hasScenarios.b;
   const shown = onlyDiff ? rows.filter((r) => r.kind !== "same") : rows;
@@ -76,22 +91,22 @@ export function SideBySide({
       <div className="te-sbs__top">
         <RunHead side="A" run={runA} n={a} other={b} sparkName={sparkNameA} />
         <div className="te-sbs__mid">
-          <button type="button" className="btn btn--sm btn--ghost" onClick={onSwap} title="Swap A and B">
-            ⇄ Swap
+          <button type="button" className="btn btn--sm btn--ghost" onClick={onSwap} title={t("sbs.swapTitle")}>
+            ⇄ {t("sbs.swap")}
           </button>
         </div>
         <RunHead side="B" run={runB} n={b} other={a} sparkName={sparkNameB} />
       </div>
 
-      <h3>Metrics</h3>
+      <h3>{t("sbs.metrics")}</h3>
       <div className="te-sbs__metrics">
         {cmp.headline
-          .filter((m) => m.label !== "Score" && m.label !== "Partial")
+          .filter((m) => m.metric !== "score" && m.metric !== "partial")
           .map((m) => (
             <div key={m.label} className="te-sbs__row">
               <span className="te-sbs__val mono">{m.a != null ? fmtNum(m.a, m.digits) : "–"}</span>
               <span className="te-sbs__label">
-                {m.label}
+                {m.metric ? headlineLabel(t, m.metric) : m.label}
                 <Delta a={m.a} b={m.b} higherIsBetter={m.higherIsBetter} digits={m.digits} />
               </span>
               <span className="te-sbs__val mono">{m.b != null ? fmtNum(m.b, m.digits) : "–"}</span>
@@ -101,19 +116,19 @@ export function SideBySide({
 
       {cats.length ? (
         <>
-          <h3>Categories</h3>
+          <h3>{t("sbs.categories")}</h3>
           <div className="te-sbs__cats">
             {cats.map((c) => (
               <div key={c.id} className="te-sbs__cat">
-                <div className="te-sbs__bar te-sbs__bar--a" title={c.a != null ? `${Math.round(c.a)}%` : "not in run A"}>
+                <div className="te-sbs__bar te-sbs__bar--a" title={c.a != null ? `${Math.round(c.a)}%` : t("sbs.notInA")}>
                   <i style={{ width: `${Math.max(0, Math.min(100, c.a ?? 0))}%` }} />
                   <span className="mono">{c.a != null ? `${Math.round(c.a)}%` : "–"}</span>
                 </div>
                 <div className="te-sbs__catname">
                   <span className="te-catbars__id">{c.id}</span> {c.name}
-                  <Delta a={c.a} b={c.b} suffix=" pts" digits={c.digits} />
+                  <Delta a={c.a} b={c.b} suffix={t("sbs.ptsSuffix")} digits={c.digits} />
                 </div>
-                <div className="te-sbs__bar te-sbs__bar--b" title={c.b != null ? `${Math.round(c.b)}%` : "not in run B"}>
+                <div className="te-sbs__bar te-sbs__bar--b" title={c.b != null ? `${Math.round(c.b)}%` : t("sbs.notInB")}>
                   <i style={{ width: `${Math.max(0, Math.min(100, c.b ?? 0))}%` }} />
                   <span className="mono">{c.b != null ? `${Math.round(c.b)}%` : "–"}</span>
                 </div>
@@ -127,11 +142,11 @@ export function SideBySide({
         <>
       <div className="te-sbs__scn-head">
         <h3>
-          Scenarios <span className="te-faint">({nDiff} differ of {rows.length})</span>
+          {t("result.scenarios")} <span className="te-faint">{t("sbs.differ", { n: nDiff, total: rows.length })}</span>
         </h3>
         <label className="te-sbs__toggle">
           <input type="checkbox" checked={onlyDiff} onChange={(e) => setOnlyDiff(e.target.checked)} />
-          Only differences
+          {t("sbs.onlyDiff")}
         </label>
       </div>
       {shown.length ? (
@@ -139,9 +154,9 @@ export function SideBySide({
           <table className="te-table te-sbs__table">
             <thead>
               <tr>
-                <th scope="col">Scenario</th>
-                <th scope="col">Run A</th>
-                <th scope="col">Run B</th>
+                <th scope="col">{t("sbs.scenario")}</th>
+                <th scope="col">{t("sbs.run", { side: "A" })}</th>
+                <th scope="col">{t("sbs.run", { side: "B" })}</th>
               </tr>
             </thead>
             <tbody>
@@ -150,15 +165,15 @@ export function SideBySide({
                   <th scope="row">
                     <span className="mono">{r.id}</span> <span className="te-faint">{r.title ?? ""}</span>
                   </th>
-                  <td>{r.from ? <Tag tone={TONE[r.from]}>{LABEL[r.from]}</Tag> : <span className="te-faint">not run</span>}</td>
-                  <td>{r.to ? <Tag tone={TONE[r.to]}>{LABEL[r.to]}</Tag> : <span className="te-faint">not run</span>}</td>
+                  <td>{r.from ? <Tag tone={TONE[r.from]}>{statusName(t, r.from)}</Tag> : <span className="te-faint">{t("sbs.notRun")}</span>}</td>
+                  <td>{r.to ? <Tag tone={TONE[r.to]}>{statusName(t, r.to)}</Tag> : <span className="te-faint">{t("sbs.notRun")}</span>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <p className="te-empty">Every scenario ended with the same status in both runs.</p>
+        <p className="te-empty">{t("sbs.allSame")}</p>
       )}
         </>
       ) : null}

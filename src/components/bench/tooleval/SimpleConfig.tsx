@@ -1,4 +1,5 @@
 import { useEffect, useId } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { SparkSnapshot } from "../../../api/types";
 import { applyPreset, countSet, emptyState, type FormState } from "./options";
 import { TrialsRow } from "./TrialsRow";
@@ -26,8 +27,9 @@ interface SimpleConfigProps {
  * which shows every option the tool has.
  */
 export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdvanced, apiKey, onApiKey, useUrl, onUseUrl: setUseUrl }: SimpleConfigProps) {
-  const templates = simpleTemplates(type);
-  const active = templates.find((t) => matchesTemplate(state, t)) ?? null;
+  const { t } = useTranslation("toolEval");
+  const templates = simpleTemplates(type, t);
+  const active = templates.find((tpl) => matchesTemplate(state, tpl)) ?? null;
   const tweaks = countSet(state) - [...KEPT_KEYS].filter((k) => String(state.values[k] ?? "").trim()).length;
   const custom = !active && (tweaks > 0 || type === "accuracy");
   // Test the model on this Spark, or any OpenAI-compatible URL the Spark can reach.
@@ -51,10 +53,10 @@ export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdva
   const llm = idx >= 0 ? spark.metrics.llm?.[idx] : undefined;
 
   const pick = (id: string) => {
-    const t = templates.find((x) => x.id === id);
-    if (!t) return;
+    const tpl = templates.find((x) => x.id === id);
+    if (!tpl) return;
     // A template replaces the options but keeps which Spark port is being tested.
-    const next = applyPreset(type, t);
+    const next = applyPreset(type, tpl);
     const keep = keptValues(state.values);
     onChange({ ...next, values: { ...next.values, ...keep }, port: state.port });
   };
@@ -63,15 +65,15 @@ export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdva
     <div className="te-simple">
       <div className="te-simple__target">
         <div className="te-simple__target-head">
-          <span className="eyebrow">Testing</span>
+          <span className="eyebrow">{t("simple.testing")}</span>
           <Tabs
             prefix={uid}
-            label="What to test"
+            label={t("simple.whatToTest")}
             value={useUrl ? "url" : "local"}
             onChange={(v) => setTarget(v === "url")}
             items={[
-              { id: "local", label: `Model on ${spark.name}` },
-              { id: "url", label: "Custom URL" },
+              { id: "local", label: t("simple.modelOn", { name: spark.name }) },
+              { id: "url", label: t("simple.customUrl") },
             ]}
           />
         </div>
@@ -79,38 +81,38 @@ export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdva
         {useUrl ? (
           <div className="te-simple__url">
             <label className="te-simple__field te-simple__field--grow">
-              <span className="eyebrow">Base URL</span>
+              <span className="eyebrow">{t("simple.baseUrl")}</span>
               <input
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setValue("base-url", e.target.value)}
-                placeholder="https://host/v1  or  http://192.168.1.50:8000"
+                placeholder={t("simple.urlPlaceholder")}
                 spellCheck={false}
                 autoCapitalize="off"
                 autoCorrect="off"
-                aria-label="Custom base URL"
+                aria-label={t("simple.urlAria")}
               />
             </label>
             <label className="te-simple__field">
-              <span className="eyebrow">Model</span>
-              <input type="text" value={modelName} onChange={(e) => setValue("model", e.target.value)} placeholder="auto-detect" spellCheck={false} aria-label="Model name" />
+              <span className="eyebrow">{t("simple.model")}</span>
+              <input type="text" value={modelName} onChange={(e) => setValue("model", e.target.value)} placeholder={t("simple.autoDetect")} spellCheck={false} aria-label={t("simple.modelAria")} />
             </label>
             <label className="te-simple__field">
-              <span className="eyebrow">API key</span>
-              <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => onApiKey(e.target.value)} placeholder="if required" aria-label="API key" />
+              <span className="eyebrow">{t("form.apiKey")}</span>
+              <input type="password" autoComplete="new-password" value={apiKey} onChange={(e) => onApiKey(e.target.value)} placeholder={t("simple.ifRequired")} aria-label={t("form.apiKey")} />
             </label>
-            <p className="te-simple__hint">The run happens on {spark.name}, so it must be able to reach this URL. The key is sent to {spark.name} for this run only and is not stored here.</p>
-            {!baseUrl.trim() ? <p className="te-simple__warn">Enter the URL of the OpenAI-compatible server to test.</p> : null}
+            <p className="te-simple__hint">{t("simple.urlHint", { name: spark.name })}</p>
+            {!baseUrl.trim() ? <p className="te-simple__warn">{t("simple.enterUrl")}</p> : null}
           </div>
         ) : (
           <>
             <div className="te-simple__target-row">
-              <b>{llm?.available && llm.modelId ? llm.modelId : "The model on this DGX Spark"}</b>
+              <b>{llm?.available && llm.modelId ? llm.modelId : t("simple.localModel")}</b>
               <span className="mono">http://127.0.0.1:{port}</span>
               {ports.length > 1 ? (
                 <label className="te-simple__port">
-                  <span className="eyebrow">Port</span>
-                  <select value={port} onChange={(e) => onChange({ ...state, port: Number(e.target.value) })} aria-label="LLM port to test">
+                  <span className="eyebrow">{t("simple.port")}</span>
+                  <select value={port} onChange={(e) => onChange({ ...state, port: Number(e.target.value) })} aria-label={t("simple.portAria")}>
                     {ports.map((p) => (
                       <option key={p} value={p}>
                         {p}
@@ -121,29 +123,29 @@ export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdva
               ) : null}
             </div>
             {!llm?.available ? (
-              <p className="te-simple__warn">No model is answering on this port right now. Start one from the Spark's Models panel first, or switch to a custom URL.</p>
+              <p className="te-simple__warn">{t("simple.noModel")}</p>
             ) : null}
           </>
         )}
         </div>
       </div>
 
-      <div className="te-simple__cards" role="radiogroup" aria-label="Ready-made runs">
-        {templates.map((t, i) => (
+      <div className="te-simple__cards" role="radiogroup" aria-label={t("simple.templates")}>
+        {templates.map((tpl, i) => (
           <button
-            key={t.id}
+            key={tpl.id}
             type="button"
             role="radio"
-            aria-checked={active?.id === t.id}
-            tabIndex={(active ? active.id === t.id : i === 0) ? 0 : -1}
+            aria-checked={active?.id === tpl.id}
+            tabIndex={(active ? active.id === tpl.id : i === 0) ? 0 : -1}
             onKeyDown={(e) => onRovingKeyDown(e, "radio", (n) => pick(templates[n].id))}
-            className={`te-simple__card${active?.id === t.id ? " is-on" : ""}`}
-            onClick={() => pick(t.id)}
+            className={`te-simple__card${active?.id === tpl.id ? " is-on" : ""}`}
+            onClick={() => pick(tpl.id)}
           >
-            <span className="te-simple__card-title">{t.label}</span>
-            <span className="te-simple__card-help">{t.help}</span>
-            {t.size || t.time ? (
-              <span className="te-simple__card-meta mono">{[t.size, t.time].filter(Boolean).join(" · ")}</span>
+            <span className="te-simple__card-title">{tpl.label}</span>
+            <span className="te-simple__card-help">{tpl.help}</span>
+            {tpl.size || tpl.time ? (
+              <span className="te-simple__card-meta mono">{[tpl.size, tpl.time].filter(Boolean).join(" · ")}</span>
             ) : null}
           </button>
         ))}
@@ -153,17 +155,13 @@ export function SimpleConfig({ type, spark, state, onChange, ports, port, onAdva
 
       {custom ? (
         <p className="te-simple__custom">
-          Custom settings are applied.{" "}
-          <button type="button" className="te-link" onClick={onAdvanced}>
-            Review them in Advanced
-          </button>{" "}
-          or pick a template above to start fresh.
+          <Trans t={t} i18nKey="simple.custom" components={{ link: <button type="button" className="te-link" onClick={onAdvanced} /> }} />
         </p>
       ) : (
         <p className="te-simple__more">
-          Need more control (sampling, categories, a system prompt, other endpoints, every option)?{" "}
+          {t("simple.more")}{" "}
           <button type="button" className="te-link" onClick={onAdvanced}>
-            Open Advanced
+            {t("simple.openAdvanced")}
           </button>
         </p>
       )}
