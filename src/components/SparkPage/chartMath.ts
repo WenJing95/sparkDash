@@ -67,8 +67,8 @@ export function seriesSegments(
 }
 
 export interface MemSegment {
+  /** The UI names each slice from its key (Unified memory panel). */
   key: "weights" | "gpu" | "kv" | "system" | "free";
-  label: string;
   mb: number;
 }
 
@@ -97,10 +97,10 @@ export function memoryBreakdown(input: MemBreakdownInput): MemSegment[] {
   const used = gpu + sys;
   const free = Math.max(0, total - used);
   const segs: MemSegment[] = [];
-  if (rest > 0) segs.push({ key: kv > 0 || input.hasModel ? "weights" : "gpu", label: kv > 0 || input.hasModel ? "Model weights" : "GPU processes", mb: rest });
-  if (kv > 0) segs.push({ key: "kv", label: "KV cache", mb: kv });
-  if (sys > 0) segs.push({ key: "system", label: "System", mb: sys });
-  segs.push({ key: "free", label: "Free", mb: free });
+  if (rest > 0) segs.push({ key: kv > 0 || input.hasModel ? "weights" : "gpu", mb: rest });
+  if (kv > 0) segs.push({ key: "kv", mb: kv });
+  if (sys > 0) segs.push({ key: "system", mb: sys });
+  segs.push({ key: "free", mb: free });
   return segs;
 }
 

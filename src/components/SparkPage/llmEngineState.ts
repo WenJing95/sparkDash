@@ -1,4 +1,6 @@
+import type { TFunction } from "i18next";
 import type { LlmMetrics } from "../../api/types";
+import { i18n } from "../../i18n";
 
 export interface EngineStateLabel {
   text: string;
@@ -15,21 +17,25 @@ export interface EngineStateLabel {
  * llama.cpp, … — a bare dash read like a failed probe, so the tile says the
  * backend does not report it. The dash is kept for "no LLM at all".
  */
-export function engineStateLabel(llm: LlmMetrics | null | undefined): EngineStateLabel {
+export function engineStateLabel(llm: LlmMetrics | null | undefined, t?: TFunction<"llm">): EngineStateLabel {
+  return stateLabel(llm, t ?? i18n.getFixedT("en", "llm"));
+}
+
+function stateLabel(llm: LlmMetrics | null | undefined, t: TFunction<"llm">): EngineStateLabel {
   if (!llm) return { text: "—", muted: false };
   // A successful Strata probe requires a loaded engine. Idle means the model
   // is ready for work, not asleep; it has no vLLM-style sleep gauge.
   if (llm.backend === "strata") {
     return llm.available
-      ? { text: "Active", muted: false }
+      ? { text: t("engineState.active"), muted: false }
       : { text: "—", muted: true };
   }
   if (llm.gpuMemoryUtilization == null) {
     return {
-      text: "n/a",
-      title: "This backend does not report engine sleep state",
+      text: t("engineState.notApplicable"),
+      title: t("engineState.notReportedTitle"),
       muted: true,
     };
   }
-  return { text: llm.gpuMemoryUtilization === 0 ? "Sleeping" : "Active", muted: false };
+  return { text: llm.gpuMemoryUtilization === 0 ? t("engineState.sleeping") : t("engineState.active"), muted: false };
 }

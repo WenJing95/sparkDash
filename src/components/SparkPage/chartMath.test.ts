@@ -68,7 +68,7 @@ describe("memoryBreakdown", () => {
   });
   it("falls back to GPU processes / system / free without LLM data", () => {
     const segs = memoryBreakdown({ totalMb: 100, gpuUsedMb: 40, cpuUsedMb: 10 });
-    expect(segs.map((s) => s.label)).toEqual(["GPU processes", "System", "Free"]);
+    expect(segs.map((s) => s.key)).toEqual(["gpu", "system", "free"]);
   });
   it("never lets KV exceed the GPU slice or free go negative", () => {
     const segs = memoryBreakdown({ totalMb: 100, gpuUsedMb: 60, cpuUsedMb: 60, kvBytes: 500 * 1024 ** 2 });

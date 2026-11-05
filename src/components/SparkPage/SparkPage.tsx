@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { SparkSnapshot } from "../../api/types";
 import { isLlmMonitoringEnabled } from "../../api/sparkRole";
 import { updateSpark, refreshSparkMetric, addLlmPort, removeLlmPort } from "../../api/client";
@@ -59,6 +60,7 @@ export function SparkPage({
   onNavigate,
   onAddHarness,
 }: SparkPageProps) {
+  const { t } = useTranslation("spark");
   const { metrics } = spark;
   const [disabledDevices, setDisabledDevices] = useState<string[]>(spark.disabledDevices || []);
   const [disabledInterfaces, setDisabledInterfaces] = useState<string[]>(
@@ -186,7 +188,7 @@ export function SparkPage({
           min={1}
           max={65535}
           inputMode="numeric"
-          placeholder="Port number"
+          placeholder={t("page.portPlaceholder")}
           value={newPortDraft}
           onChange={(e) => setNewPortDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -204,7 +206,7 @@ export function SparkPage({
           disabled={!newPortDraft.trim()}
           className="btn btn--sm btn--primary"
         >
-          Add
+          {t("page.add")}
         </button>
         <button
           type="button"
@@ -214,13 +216,13 @@ export function SparkPage({
           }}
           className="btn btn--sm"
         >
-          Cancel
+          {t("page.cancel")}
         </button>
-        <div className="sp-add-port__presets" role="group" aria-label="Server presets">
-          <span className="sp-hint">Presets:</span>
+        <div className="sp-add-port__presets" role="group" aria-label={t("page.presetsGroup")}>
+          <span className="sp-hint">{t("page.presets")}</span>
           <button
             type="button"
-            title="LM Studio default port"
+            title={t("page.lmStudioPortTitle")}
             onClick={() => void handleAddPort(1234)}
             className="btn btn--sm"
           >
@@ -228,7 +230,7 @@ export function SparkPage({
           </button>
           <button
             type="button"
-            title="Ollama default port"
+            title={t("page.ollamaPortTitle")}
             onClick={() => void handleAddPort(11434)}
             className="btn btn--sm"
           >
@@ -236,7 +238,7 @@ export function SparkPage({
           </button>
           <button
             type="button"
-            title="TensorFold default port"
+            title={t("page.tensorfoldPortTitle")}
             onClick={() => void handleAddPort(8888)}
             className="btn btn--sm"
           >
@@ -246,7 +248,7 @@ export function SparkPage({
       </div>
     ) : (
       <button type="button" onClick={() => setShowAddPort(true)} className="sp-add-port-btn">
-        + Add LLM port
+        {t("page.addLlmPort")}
       </button>
     )
   ) : null;

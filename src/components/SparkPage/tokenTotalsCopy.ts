@@ -7,11 +7,16 @@
  * - sparkDash's ledger (the "Total tokens by model" tables) keeps counting
  *   across restarts, from when sparkDash first saw the endpoint.
  */
-export const ENGINE_GENERATED_LABEL = "Generated (engine)";
-export const ENGINE_GENERATED_TITLE = "Reported by the engine since it last started";
-export const LEDGER_HINT = "Counted by sparkDash since tracking began";
-export const LEDGER_TITLE =
-  "Counted by sparkDash since tracking began, filtered by the selected range. It survives engine restarts, so it can be larger than the engine's own Generated counter.";
+import type { TFunction } from "i18next";
+import { i18n } from "../../i18n";
+import en from "../../locales/en/llm.json";
+
+// English copies for callers that are not on the "llm" namespace yet. Components
+// on it read tokens.* through t so the wording follows the selected language.
+export const ENGINE_GENERATED_LABEL = en.tokens.engineGenerated;
+export const ENGINE_GENERATED_TITLE = en.tokens.engineGeneratedTitle;
+export const LEDGER_HINT = en.tokens.ledgerHint;
+export const LEDGER_TITLE = en.tokens.ledgerTitle;
 
 /**
  * A ledger row's prompt whose cache split was never measured (the engine published no cached counter
@@ -23,9 +28,20 @@ export function unreportedOf(row: { promptTokens: number; cachedTokens: number; 
   return Math.min(Math.max(0, n), open);
 }
 
-/** The hover of a token row: prompt, its split and generated. */
-export function tokenRowTitle(row: { promptTokens: number; cachedTokens: number; unreportedPromptTokens: number; completionTokens: number }): string {
-  const prefill = row.promptTokens - row.cachedTokens - row.unreportedPromptTokens;
-  const unreported = row.unreportedPromptTokens > 0 ? ` \u00b7 ${row.unreportedPromptTokens.toLocaleString()} not reported` : "";
-  return `${row.promptTokens.toLocaleString()} prompt \u00b7 ${row.cachedTokens.toLocaleString()} cached \u00b7 ${prefill.toLocaleString()} prefill${unreported} \u00b7 ${row.completionTokens.toLocaleString()} generated`;
+type TokenRow = { promptTokens: number; cachedTokens: number; unreportedPromptTokens: number; completionTokens: number };
+
+/** The hover of a token row: prompt, its split and generated. Without t it is English. */
+export function tokenRowTitle(row: TokenRow, t?: TFunction<"llm">): string {
+  return rowTitle(row, t ?? i18n.getFixedT("en", "llm"));
+}
+
+function rowTitle(row: TokenRow, t: TFunction<"llm">): string {
+  const values = {
+    prompt: row.promptTokens.toLocaleString(),
+    cached: row.cachedTokens.toLocaleString(),
+    prefill: (row.promptTokens - row.cachedTokens - row.unreportedPromptTokens).toLocaleString(),
+    unreported: row.unreportedPromptTokens.toLocaleString(),
+    generated: row.completionTokens.toLocaleString(),
+  };
+  return row.unreportedPromptTokens > 0 ? t("tokens.rowTitleUnreported", values) : t("tokens.rowTitle", values);
 }

@@ -3,11 +3,8 @@
 export type GpuView = "combined" | "all" | number;
 export type GpuMetric = "usage" | "powerPct" | "temp";
 
-export const GPU_METRICS: ReadonlyArray<{ id: GpuMetric; label: string; unit: string }> = [
-  { id: "usage", label: "Utilization", unit: "GPU utilization %" },
-  { id: "powerPct", label: "Power", unit: "Power % of limit" },
-  { id: "temp", label: "Temperature", unit: "Temperature °C" },
-];
+/** The metrics in button order; the chart names them (button label and series label) by id. */
+export const GPU_METRICS: ReadonlyArray<{ id: GpuMetric }> = [{ id: "usage" }, { id: "powerPct" }, { id: "temp" }];
 
 /** One colour per card, by position; cycles past six cards. */
 const GPU_COLORS = [
@@ -47,12 +44,16 @@ export function parseGpuMetric(raw: string | null | undefined): GpuMetric {
   return GPU_METRICS.some((m) => m.id === raw) ? (raw as GpuMetric) : "usage";
 }
 
-/** The lines for a view: the host aggregate, every card for one metric, or one card's three metrics. */
+/**
+ * The lines for a view: the host aggregate, every card for one metric, or one card's three metrics.
+ * `metricLabel` names a metric line (the caller passes the translated legend text).
+ */
 export function chartSeriesSpecs(
   view: GpuView,
   metric: GpuMetric,
   indices: readonly number[],
-  labels: ReadonlyMap<number, string> = new Map()
+  labels: ReadonlyMap<number, string> = new Map(),
+  metricLabel: (m: GpuMetric) => string = (m) => m
 ): ChartSeriesSpec[] {
   if (view === "all") {
     return indices.map((idx, pos) => ({
@@ -66,7 +67,7 @@ export function chartSeriesSpecs(
   const prefix = view === "combined" ? "gpu" : `gpu.${view}`;
   return GPU_METRICS.map((m) => ({
     key: m.id,
-    label: m.unit,
+    label: metricLabel(m.id),
     color: METRIC_COLORS[m.id],
     metric: `${prefix}.${m.id}`,
     fill: m.id === "usage",

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { ConversationRow } from "../../api/types";
 import { PlusIcon } from "../ui/icons";
 
@@ -15,17 +17,17 @@ interface ConversationListProps {
   now?: number;
 }
 
-function formatSessionAge(lastUsedAt: number | undefined, now: number): string {
+function formatSessionAge(lastUsedAt: number | undefined, now: number, t: TFunction<"spark">, locale: string | undefined): string {
   if (lastUsedAt == null || !Number.isFinite(lastUsedAt)) return "—";
   const delta = Math.max(0, now - lastUsedAt);
   const minute = 60_000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return "now";
+  if (delta < minute) return t("sessions.now");
   if (delta < hour) return `${Math.floor(delta / minute)}m`;
   if (delta < day) return `${Math.floor(delta / hour)}h`;
   if (delta < 7 * day) return `${Math.floor(delta / day)}d`;
-  return new Date(lastUsedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(lastUsedAt).toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 function occupancyTone(row: ConversationRow, now: number): "generating" | "stalled" | "recent" | "warm" | "idle" {
@@ -52,19 +54,20 @@ function contextLabel(row: ConversationRow): string {
   return `${used}/${formatTokens(row.contextWindow)}`;
 }
 
-function contextTitle(row: ConversationRow): string {
+function contextTitle(row: ConversationRow, t: TFunction<"spark">): string {
   const used = row.contextUsed?.toLocaleString();
   const window = row.contextWindow?.toLocaleString();
-  if (used && window) return `${row.contextApprox ? "~" : ""}${used} / ${window} tokens`;
-  if (used) return `${row.contextApprox ? "~" : ""}${used} tokens`;
-  if (window) return `${window} token window`;
+  const approx = row.contextApprox ? "~" : "";
+  if (used && window) return t("sessions.tokensOfWindow", { used: `${approx}${used}`, window });
+  if (used) return t("sessions.tokens", { used: `${approx}${used}` });
+  if (window) return t("sessions.tokenWindow", { window });
   return "";
 }
 
-function stateLabel(row: ConversationRow, now: number): string {
-  if (row.badge === "generating") return "Generating";
-  if (row.badge === "stalled") return "Stalled";
-  return formatSessionAge(row.lastUsedAt, now);
+function stateLabel(row: ConversationRow, now: number, t: TFunction<"spark">, locale: string | undefined): string {
+  if (row.badge === "generating") return t("sessions.generating");
+  if (row.badge === "stalled") return t("sessions.stalled");
+  return formatSessionAge(row.lastUsedAt, now, t, locale);
 }
 
 function laneLabel(source: string, agent?: string): string {
@@ -90,30 +93,31 @@ function groupConversations(rows: ConversationRow[]) {
 }
 
 export function ConversationList({ conversations, onAddHarness, now = Date.now() }: ConversationListProps) {
+  const { t, i18n } = useTranslation("spark");
   const groups = groupConversations(conversations);
 
   return (
     <div className="occupancy">
       <div className="occupancy-head">
         <span className="occupancy-head-count">{conversations.length}</span>
-        <span className="occupancy-head-title">Sessions</span>
+        <span className="occupancy-head-title">{t("sessions.title")}</span>
         {onAddHarness && (
-          <button type="button" title="Add harness" aria-label="Add harness" onClick={onAddHarness} className="occupancy-head-add">
+          <button type="button" title={t("sessions.addHarness")} aria-label={t("sessions.addHarness")} onClick={onAddHarness} className="occupancy-head-add">
             <PlusIcon className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
       {conversations.length === 0 ? (
         <div className="occupancy-empty">
-          <p>No sessions on this LLM. Attach OpenClaw, Hermes, OpenCode, oh-my-pi, or DeepSeek Harness.</p>
+          <p>{t("sessions.empty")}</p>
           {onAddHarness && (
             <button type="button" onClick={onAddHarness} className="occupancy-add-harness">
-              + Harness
+              {t("sessions.addHarnessButton")}
             </button>
           )}
         </div>
       ) : (
-        <div className="occupancy-list" aria-label="Harness sessions on this LLM">
+        <div className="occupancy-list" aria-label={t("sessions.listLabel")}>
           {groups.map((group) => (
             <section key={group.key} className="occupancy-lane">
               <h3 className="occupancy-lane-label">{group.label}</h3>
@@ -121,13 +125,13 @@ export function ConversationList({ conversations, onAddHarness, now = Date.now()
                 {group.rows.map((row) => {
                   const ctx = contextLabel(row);
                   return (
-                    <li key={row.id} className={`occupancy-row is-${occupancyTone(row, now)}`} title={row.stale ? "Last refresh failed; this row is stale" : undefined}>
+                    <li key={row.id} className={`occupancy-row is-${occupancyTone(row, now)}`} title={row.stale ? t("sessions.staleTitle") : undefined}>
                       <span className="occupancy-dot" aria-hidden="true" />
                       <span className="occupancy-handle" title={row.handle}>{row.handle}</span>
-                      <span className="occupancy-ctx" title={ctx ? contextTitle(row) : undefined}>{ctx}</span>
+                      <span className="occupancy-ctx" title={ctx ? contextTitle(row, t) : undefined}>{ctx}</span>
                       <span className="occupancy-state">
-                        {stateLabel(row, now)}
-                        {row.stale ? <span className="occupancy-stale"> stale</span> : null}
+                        {stateLabel(row, now, t, i18n.resolvedLanguage)}
+                        {row.stale ? <span className="occupancy-stale"> {t("sessions.stale")}</span> : null}
                       </span>
                     </li>
                   );

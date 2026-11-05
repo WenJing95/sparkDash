@@ -1,6 +1,8 @@
 import { benchId } from "../../constants";
 import { BenchIcon } from "../bench/BenchIcon";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { ConversationRow, LlmMetrics, LlmBenchTarget } from "../../api/types";
 import { setLlmApiKey, updateLlmPort, updateLlmPorts } from "../../api/client";
 import { TrendLine } from "../ui/TrendLine";
@@ -17,13 +19,14 @@ import { PrefillBenchDialog } from "./PrefillBenchDialog";
 import { QualityBenchDialog } from "./QualityBenchDialog";
 import { LlmDailyChart } from "./LlmDailyChart";
 import { LlmTokenTotals } from "./LlmTokenTotals";
-import { ENGINE_GENERATED_LABEL, ENGINE_GENERATED_TITLE } from "./tokenTotalsCopy";
 import { parseLlmTargetInput } from "../../shared/llmTarget.js";
+import { llmTargetErrorText } from "../../shared/llmTargetText";
 import { backendLabel } from "../../shared/llmBackends.js";
 import { LlmTrendChart } from "./LlmTrendChart";
 import type { BenchKind } from "./BenchSwitcher";
 import { engineStateLabel } from "./llmEngineState";
-import { idleLabel, isLlmIdle } from "../../shared/llmIdle";
+import { isLlmIdle } from "../../shared/llmIdle";
+import { formatSince } from "../../shared/formatSince";
 import { measuredGenerationTps } from "../../shared/llmRate";
 import { ConversationList } from "./ConversationList";
 
@@ -43,26 +46,24 @@ interface LlmPanelProps {
   onAddHarness?: () => void;
 }
 
-const VLLM_METRIC_INFO = {
-  kvCache:
-    "Free tokens left in the engine’s KV-cache pool, over the allocated pool (tokens and memory). The pool is shared across concurrent requests and can be larger than one request’s max context. High usage (≥80% full) means little room for new or long contexts and often leads to queuing or preemptions.",
-  requests:
-    "Run = requests actively generating on the GPU. Wait = accepted but not yet scheduled (capacity or constraints). Growing wait with high KV cache usually means the server is overloaded.",
-  ttftMean:
-    "Mean time-to-first-token reported by FreeToken (a mean, not a percentile): how long requests wait until the first output token.",
-  ttftP95:
-    "95th percentile time-to-first-token from the engine’s request history: how long “slow” requests wait until the first output token. Spikes mean queueing, long prefills, or cold paths—not average decode speed.",
-  preempts:
-    "Cumulative times the engine paused a running request to free KV cache for others. Rising under load signals memory pressure; zero is normal when the server is comfortable.",
-  prefixCache:
-    "Lifetime fraction of prefix-cache lookups that hit (hits ÷ queries). Higher means more prompt reuse and less prefill work; — when the series is missing or unused.",
-  e2eP95:
-    "95th percentile end-to-end request latency from the engine’s request history: arrival until the request finishes. Includes queue wait, prefill, and decode—not just token generation speed.",
-  itlP95:
-    "95th percentile inter-token latency (time between successive output tokens) from the engine’s request history. Spikes mean decode stalls or contention; lower is smoother streaming.",
-  mtpAccept:
-    "Lifetime speculative / MTP acceptance rate (accepted draft tokens ÷ drafted tokens). Higher means speculative decoding is paying off; — when speculation is off or unused.",
-} as const;
+type MetricInfoId = "kvCache" | "requests" | "ttftMean" | "ttftP95" | "preempts" | "prefixCache" | "e2eP95" | "itlP95" | "mtpAccept";
+
+function metricInfo(id: MetricInfoId, t: TFunction<"llm">): string {
+  switch (id) {
+    case "kvCache": return t("metricInfo.kvCache");
+    case "requests": return t("metricInfo.requests");
+    case "ttftMean": return t("metricInfo.ttftMean");
+    case "ttftP95": return t("metricInfo.ttftP95");
+    case "preempts": return t("metricInfo.preempts");
+    case "prefixCache": return t("metricInfo.prefixCache");
+    case "e2eP95": return t("metricInfo.e2eP95");
+    case "itlP95": return t("metricInfo.itlP95");
+    case "mtpAccept": return t("metricInfo.mtpAccept");
+  }
+}
+
+/** Panel save errors written here stay codes so they follow the language; server errors are shown as sent. */
+type SaveError = { code: "portRange" } | { code: "portTaken"; port: number } | { code: "saveFailed" } | { raw: string };
 
 /** Compact token counts for the KV pool tile (883552 → 884k). */
 function formatKvTokens(n: number): string {
@@ -120,15 +121,17 @@ function LlmLaunchers({
   onLaunch: (kind: BenchKind) => void;
   onRemoteLaunch: (kind: BenchKind, target: LlmBenchTarget) => void;
 }) {
+  const { t } = useTranslation("llm");
+  const { t: tc } = useTranslation("common");
   const [remoteOpen, setRemoteOpen] = useState(false);
   const [hostDraft, setHostDraft] = useState(() => readStoredRemote().host);
   const [portDraft, setPortDraft] = useState(() => readStoredRemote().port);
   const [tls, setTls] = useState(() => readStoredRemote().tls);
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
-  const persist = (t: LlmBenchTarget) => {
+  const persist = (target: LlmBenchTarget) => {
     try {
-      localStorage.setItem(REMOTE_STORAGE_KEY, JSON.stringify(t));
+      localStorage.setItem(REMOTE_STORAGE_KEY, JSON.stringify(target));
     } catch {
       /* ignore */
     }
@@ -161,18 +164,17 @@ function LlmLaunchers({
     }
   };
 
-  const localHint =
-    "Runs against this Spark’s LLM. Remote units use LAN HTTP, or an SSH tunnel to loopback if the server only listens on 127.0.0.1.";
+  const localHint = t("launchers.localHint");
 
   return (
     <div className="sp-launchers">
       <div className="sp-btns">
         {(
           [
-            ["decode", "Decode", `Decode benchmark: generation speed at rising concurrency, on this Spark. ${localHint}`],
-            ["prefill", "Prefill", `Prefill benchmark: prompt processing speed and time to first token, on this Spark. ${localHint}`],
-            ["quality", "Quality", "Quality suite (QA, reasoning, arithmetic, state tracking, GSM8K, MMLU) against this port's model. Compare runs across models, quantizations and KV-cache formats."],
-            ["tool-eval", "Tool Eval Bench", "Benchmark this model's tool calling."],
+            ["decode", t("launchers.decode"), t("launchers.decodeTitle", { hint: localHint })],
+            ["prefill", t("launchers.prefill"), t("launchers.prefillTitle", { hint: localHint })],
+            ["quality", t("launchers.quality"), t("launchers.qualityTitle")],
+            ["tool-eval", t("launchers.toolEval"), t("launchers.toolEvalTitle")],
           ] as const
         ).map(([type, label, title]) => (
           <button
@@ -199,7 +201,7 @@ function LlmLaunchers({
           className="btn btn--sm"
         >
           <ExpandIcon className="h-3.5 w-3.5" />
-          Showcase
+          {t("launchers.showcase")}
         </button>
         <button
           type="button"
@@ -209,19 +211,19 @@ function LlmLaunchers({
           }}
           className={`btn btn--sm btn--ghost sp-btns__end ${remoteOpen ? "is-on" : ""}`}
           aria-expanded={remoteOpen}
-          title="On-demand bench against a typed host (HTTPS Tailscale, LAN IP, …). Not probed until you run."
+          title={t("launchers.remoteTitle")}
         >
           <ServerIcon className="h-3.5 w-3.5" />
-          Remote
+          {t("launchers.remote")}
         </button>
       </div>
       {remoteOpen && (
         <div className="sp-remote">
           <p className="sp-hint">
-            On-demand endpoint. Paste a URL or type host + port — nothing is probed until you run.
+            {t("launchers.remoteHint")}
           </p>
           <label className="sp-field">
-            <span className="eyebrow">Host</span>
+            <span className="eyebrow">{t("launchers.host")}</span>
             <input
               type="text"
               value={hostDraft}
@@ -236,7 +238,7 @@ function LlmLaunchers({
           </label>
           <div className="sp-field-row">
             <label className="sp-field sp-field--grow">
-              <span className="eyebrow">Port</span>
+              <span className="eyebrow">{t("launchers.port")}</span>
               <input
                 type="number"
                 min={1}
@@ -261,16 +263,16 @@ function LlmLaunchers({
               HTTPS
             </label>
           </div>
-          {remoteError && <p className="sp-error">{remoteError}</p>}
+          {remoteError && <p className="sp-error">{llmTargetErrorText(tc, remoteError)}</p>}
           <div className="sp-btns">
             <button type="button" onClick={() => launchRemote("decode")} className="btn btn--sm">
-              Decode
+              {t("launchers.decode")}
             </button>
             <button type="button" onClick={() => launchRemote("prefill")} className="btn btn--sm">
-              Prefill
+              {t("launchers.prefill")}
             </button>
             <button type="button" onClick={() => launchRemote("quality")} className="btn btn--sm">
-              Quality
+              {t("launchers.quality")}
             </button>
           </div>
         </div>
@@ -311,6 +313,7 @@ function MetricInfoTip({
   setOpenId: (id: string | null) => void;
   align?: "left" | "right";
 }) {
+  const { t } = useTranslation("llm");
   const open = openId === id;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -348,7 +351,7 @@ function MetricInfoTip({
         }}
         onMouseLeave={scheduleClose}
         className="relative cursor-pointer opacity-60 hover:opacity-100"
-        aria-label={`${label} info`}
+        aria-label={t("panel.infoAria", { label })}
       >
         <InfoIcon className="h-2.5 w-2.5" />
         {open && (
@@ -380,6 +383,7 @@ export function LlmPanel({
   conversations = [],
   onAddHarness,
 }: LlmPanelProps) {
+  const { t } = useTranslation("llm");
   // Tail keyed by port so multi-port LLM sparklines stay distinct (8b).
   const genHistory = useMetricsHistoryTail(sparkId, `llm:${llmPort}.tps`);
   const prefillHistory = useMetricsHistoryTail(sparkId, `llm:${llmPort}.prefill`);
@@ -400,7 +404,7 @@ export function LlmPanel({
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<SaveError | null>(null);
   const [engineInfoOpen, setEngineInfoOpen] = useState(false);
   const [openBench, setOpenBench] = useState<BenchKind | null>(null);
   const [remoteTarget, setRemoteTarget] = useState<LlmBenchTarget | null>(null);
@@ -440,8 +444,9 @@ export function LlmPanel({
   // The endpoint answered but its stats could not be read: show no rate rather than 0.
   const measured = llm?.measurementValid !== false;
   // While nothing is flowing, say when the endpoint last served.
+  const idleSince = formatSince(llm?.lastActiveAt);
   const idleNote = available && measured && isLlmIdle({ generationTps, prefillTps, prefillActive: llm?.prefillActive, decodeActive: llm?.decodeActive })
-    ? idleLabel(llm?.lastActiveAt)
+    ? idleSince ? t("panel.idleSince", { since: idleSince }) : t("panel.idle")
     : null;
 
   // Keep draft in sync when server pushes a different port (other tab / reload)
@@ -466,7 +471,7 @@ export function LlmPanel({
 
   const handleSaveSettings = async () => {
     if (parsedPort === null) {
-      setSaveError("Port must be an integer 1–65535");
+      setSaveError({ code: "portRange" });
       return;
     }
     if (!settingsDirty) {
@@ -480,7 +485,7 @@ export function LlmPanel({
         const currentPorts =
           Array.isArray(llmPorts) && llmPorts.length > 0 ? llmPorts : [llmPort];
         if (currentPorts.includes(parsedPort) && parsedPort !== llmPort) {
-          setSaveError(`Port ${parsedPort} is already configured`);
+          setSaveError({ code: "portTaken", port: parsedPort });
           setSaving(false);
           return;
         }
@@ -502,7 +507,7 @@ export function LlmPanel({
       setClearApiKey(false);
       setShowSettings(false);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save LLM settings");
+      setSaveError(err instanceof Error ? { raw: err.message } : { code: "saveFailed" });
     } finally {
       setSaving(false);
     }
@@ -523,19 +528,17 @@ export function LlmPanel({
           ? "text-warning"
           : "text-success";
   const contextLabel = llm?.contextLength
-    ? llm.contextLength >= 1000
-      ? `${Math.round(llm.contextLength / 1024)}k ctx`
-      : `${llm.contextLength} ctx`
+    ? t("panel.ctx", { size: llm.contextLength >= 1000 ? `${Math.round(llm.contextLength / 1024)}k` : String(llm.contextLength) })
     : null;
   const backend = backendLabel(llm?.backend ?? null);
 
-  const tile = (id: string, label: string, value: string, opts?: { tone?: string; sub?: string; align?: "left" | "right" }) => (
+  const tile = (id: MetricInfoId, label: string, value: string, opts?: { tone?: string; sub?: string; align?: "left" | "right" }) => (
     <div className="sp-tile" key={id}>
       <b className={opts?.tone ?? ""}>{value}</b>
       <MetricInfoTip
         id={id}
         label={label}
-        text={VLLM_METRIC_INFO[id as keyof typeof VLLM_METRIC_INFO]}
+        text={metricInfo(id, t)}
         openId={metricInfoId}
         setOpenId={setMetricInfoId}
         align={opts?.align}
@@ -548,15 +551,15 @@ export function LlmPanel({
     llm?.kvCacheUsage != null
       ? `${(llm.kvCacheUsage * 100).toFixed(0)}%`
       : llm?.kvCacheTokensAvailable != null
-        ? `${formatKvTokens(llm.kvCacheTokensAvailable)} free`
+        ? t("tiles.kvFree", { tokens: formatKvTokens(llm.kvCacheTokensAvailable) })
         : llm?.kvCacheTokens != null
           ? formatKvTokens(llm.kvCacheTokens)
           : null;
   const kvSub = [
     llm?.kvCacheUsage != null && llm?.kvCacheTokensAvailable != null
-      ? `${formatKvTokens(llm.kvCacheTokensAvailable)} free`
+      ? t("tiles.kvFree", { tokens: formatKvTokens(llm.kvCacheTokensAvailable) })
       : null,
-    llm?.kvCacheTokens != null ? `${formatKvTokens(llm.kvCacheTokens)} pool` : null,
+    llm?.kvCacheTokens != null ? t("tiles.kvPool", { tokens: formatKvTokens(llm.kvCacheTokens) }) : null,
     llm?.kvCacheMemoryBytes != null ? formatKvBytes(llm.kvCacheMemoryBytes) : null,
   ]
     .filter(Boolean)
@@ -564,7 +567,7 @@ export function LlmPanel({
 
   return (
     <Panel
-      title="LLM server"
+      title={t("panel.title")}
       accent={available}
       icon={<BotIcon />}
       className={`panel-llm ${className ?? ""}`}
@@ -574,16 +577,16 @@ export function LlmPanel({
           {available && backend && (
             <>
               {llm?.via === "ssh-tunnel" && (
-                <Tag title="This engine's port is not reachable from the dashboard, so it is read through an SSH tunnel to the unit">
-                  via SSH
+                <Tag title={t("panel.viaSshTitle")}>
+                  {t("panel.viaSsh")}
                 </Tag>
               )}
               <Tag
                 tone="info"
                 title={
                   llm?.engineVersion
-                    ? `Backend: ${backend}, engine v${llm.engineVersion}`
-                    : `Backend: ${backend}`
+                    ? t("panel.backendVersionTitle", { backend, version: llm.engineVersion })
+                    : t("panel.backendTitle", { backend })
                 }
               >
                 {backend} · :{llmPort}
@@ -594,17 +597,17 @@ export function LlmPanel({
           {onRemovePort && (
             <button
               type="button"
-              title={`Remove port ${llmPort}`}
+              title={t("panel.removePortTitle", { port: llmPort })}
               onClick={() => onRemovePort(llmPort)}
               className="btn btn--sm btn--danger"
             >
               <span aria-hidden>×</span>
-              <span>Remove</span>
+              <span>{t("panel.remove")}</span>
             </button>
           )}
           <button
             type="button"
-            title={showSettings ? "Done" : "LLM settings"}
+            title={showSettings ? t("panel.done") : t("panel.settingsTitle")}
             onClick={() => {
               if (showSettings) {
                 setPortDraft(String(llmPort));
@@ -618,7 +621,7 @@ export function LlmPanel({
             className={`btn btn--sm btn--ghost ${showSettings ? "is-on" : ""}`}
           >
             <GearIcon />
-            <span>{showSettings ? "Done" : "Settings"}</span>
+            <span>{showSettings ? t("panel.done") : t("panel.settings")}</span>
           </button>
         </div>
       }
@@ -626,10 +629,10 @@ export function LlmPanel({
       {showSettings ? (
         <div className="sp-stack">
           <p className="sp-hint">
-            HTTP port of the LLM server on this Spark (vLLM / llama.cpp / sglang / ds4 / EXL3 / TensorFold / Radiance / OpenAI-compatible gateway).
+            {t("settings.hint")}
           </p>
           <label className="sp-field">
-            <span className="eyebrow">Port</span>
+            <span className="eyebrow">{t("settings.port")}</span>
             <input
               type="number"
               min={1}
@@ -649,11 +652,11 @@ export function LlmPanel({
               className="sp-input"
             />
           </label>
-          <div className="sp-btns" role="group" aria-label="Server presets">
-            <span className="eyebrow">Presets:</span>
+          <div className="sp-btns" role="group" aria-label={t("settings.presetsAria")}>
+            <span className="eyebrow">{t("settings.presets")}</span>
             <button
               type="button"
-              title="Fill LM Studio's default port (1234)"
+              title={t("settings.presetLmStudioTitle")}
               onClick={() => setPortDraft("1234")}
               className="btn btn--sm"
             >
@@ -661,7 +664,7 @@ export function LlmPanel({
             </button>
             <button
               type="button"
-              title="Fill Ollama's default port (11434)"
+              title={t("settings.presetOllamaTitle")}
               onClick={() => setPortDraft("11434")}
               className="btn btn--sm"
             >
@@ -669,7 +672,7 @@ export function LlmPanel({
             </button>
             <button
               type="button"
-              title="Fill TensorFold's default port (8888)"
+              title={t("settings.presetTensorFoldTitle")}
               onClick={() => setPortDraft("8888")}
               className="btn btn--sm"
             >
@@ -677,14 +680,14 @@ export function LlmPanel({
             </button>
           </div>
           <label className="sp-field">
-            <span className="eyebrow">API key (optional)</span>
+            <span className="eyebrow">{t("settings.apiKey")}</span>
             <input
               type="password"
               autoComplete="new-password"
               spellCheck={false}
               value={apiKeyDraft}
               disabled={clearApiKey}
-              placeholder={hasApiKey && !clearApiKey ? "•••••••• (saved — leave blank to keep)" : "Bearer token if required"}
+              placeholder={hasApiKey && !clearApiKey ? t("settings.apiKeySaved") : t("settings.apiKeyPlaceholder")}
               onChange={(e) => {
                 setApiKeyDraft(e.target.value);
                 setClearApiKey(false);
@@ -710,11 +713,21 @@ export function LlmPanel({
                   setSaveError(null);
                 }}
               />
-              Clear saved API key
+              {t("settings.clearApiKey")}
             </label>
           )}
-          {portInvalid && <p className="sp-error">Enter an integer between 1 and 65535</p>}
-          {saveError && <p className="sp-error">{saveError}</p>}
+          {portInvalid && <p className="sp-error">{t("settings.portInvalid")}</p>}
+          {saveError && (
+            <p className="sp-error">
+              {"raw" in saveError
+                ? saveError.raw
+                : saveError.code === "portTaken"
+                  ? t("settings.portTaken", { port: saveError.port })
+                  : saveError.code === "portRange"
+                    ? t("settings.portRange")
+                    : t("settings.saveFailed")}
+            </p>
+          )}
           <div className="sp-btns sp-btns--end">
             <button
               type="button"
@@ -728,7 +741,7 @@ export function LlmPanel({
               disabled={saving}
               className="btn btn--sm"
             >
-              Cancel
+              {t("settings.cancel")}
             </button>
             <button
               type="button"
@@ -736,7 +749,7 @@ export function LlmPanel({
               disabled={saving || portInvalid || !settingsDirty}
               className="btn btn--sm btn--primary"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("settings.saving") : t("settings.save")}
             </button>
           </div>
         </div>
@@ -746,8 +759,8 @@ export function LlmPanel({
             {llm?.posture ? <PostureBadge posture={llm.posture} /> : <span className="sdot sdot--off" />}
             <p className="sp-muted">
               {llm?.posture?.auth === "protected"
-                ? `${llm.posture.label} on :${llmPort}`
-                : `No model loaded on :${llmPort}`}
+                ? t("panel.postureOnPort", { label: llm.posture.label, port: llmPort })
+                : t("panel.noModel", { port: llmPort })}
             </p>
           </div>
           <LlmLaunchers
@@ -764,7 +777,7 @@ export function LlmPanel({
         <div className="sp-stack">
           <div className="sp-model">
             <div className="eyebrow">
-              <span>Model</span>
+              <span>{t("panel.model")}</span>
               {contextLabel && <span>{contextLabel}</span>}
             </div>
             <code title={llm?.modelId ?? undefined}>{llm?.modelId ?? "—"}</code>
@@ -778,18 +791,18 @@ export function LlmPanel({
               className="sp-metric"
               title={
                 isStrata
-                  ? "Live sliding-window decode rate. When that window is unavailable, the active-slot mean sums each active slot’s generated tokens divided by its elapsed time since first token; it excludes prefill time."
+                  ? t("panel.decodeStrataTitle")
                   : undefined
               }
             >
-              <span className="eyebrow">{isTensorFold ? "Decode · aggregate" : "Decode"}</span>
+              <span className="eyebrow">{isTensorFold ? t("panel.decodeAggregate") : t("panel.decode")}</span>
               <div className="big-num sp-big-lg">
                 {!measured ? (
                   <span title={llm?.measurementError ?? undefined}>—</span>
                 ) : isStrata && llm?.decodeActive && generationTps <= 0 ? (
                   <>
                     <span className="ov-tps__dots" aria-hidden />
-                    <small>decoding</small>
+                    <small>{t("panel.decoding")}</small>
                   </>
                 ) : (
                   <>
@@ -799,21 +812,23 @@ export function LlmPanel({
                 )}
               </div>
               <TrendLine data={genHistory} height={44} color="var(--color-accent)" />
-              {genAvg != null && <span className="sp-avg mono">avg {fmtAvg(genAvg)}</span>}
-              {isStrata && llm?.generationTpsSource === "slot-mean" && <span className="sp-avg">active-slot mean</span>}
+              {genAvg != null && <span className="sp-avg mono">{t("panel.avg", { value: fmtAvg(genAvg) })}</span>}
+              {isStrata && llm?.generationTpsSource === "slot-mean" && <span className="sp-avg">{t("panel.activeSlotMean")}</span>}
               {measured && llm?.perStreamTps != null && (
                 <span
                   className="sp-avg mono"
                   title={isTensorFold
-                    ? "Completed-request decode rate (1 / mean per-request time per output token). Held between completions; not the speed of a currently running stream."
-                    : "Average decode throughput of one running stream (1 / mean seconds per output token). Only engines that publish a per-token latency histogram report it."}
+                    ? t("panel.perStreamTensorFoldTitle")
+                    : t("panel.perStreamTitle")}
                 >
-                  {fmtTps(llm.perStreamTps)} tok/s{isTensorFold ? " · last completions" : " per stream"}
+                  {isTensorFold
+                    ? t("panel.perStreamLastCompletions", { tps: fmtTps(llm.perStreamTps) })
+                    : t("panel.perStream", { tps: fmtTps(llm.perStreamTps) })}
                 </span>
               )}
               {!measured && (
-                <span className="sp-avg" title="The endpoint answered, but no rate could be measured on the last poll.">
-                  Not measured: {llm?.measurementError ?? "unknown"}
+                <span className="sp-avg" title={t("panel.notMeasuredTitle")}>
+                  {t("panel.notMeasured", { reason: llm?.measurementError ?? t("panel.unknown") })}
                 </span>
               )}
               {idleNote && (
@@ -826,23 +841,23 @@ export function LlmPanel({
               className="sp-metric"
               title={
                 isStrata
-                  ? "Engine-reported mean for computed/new prompt tokens. It may be from an earlier prefill and is not an aggregate across slots."
+                  ? t("panel.prefillStrataTitle")
                   : llm?.backend === "tensorfold" && llm.uncachedPrefillTps != null
-                    ? "Prompt tokens computed per second of prefill time (the engine's prefill-time and cached-token counters, finished requests only), held between completions. Tokens restored from the prompt cache are not counted here; they are the Cached prefill rate."
-                    : "Prompt tokens/sec taken in during the last poll window — cache-served + computed. Opening a saved chat in the UI does not hit the GPU; send (or regenerate) so the history is sent as the prompt. Cached prefill does little GPU work; uncached prefill is what builds KV cache."
+                    ? t("panel.prefillTensorFoldTitle")
+                    : t("panel.prefillTitle")
               }
             >
-              <span className="eyebrow">{completedPrefill ? "Prefill · last completed" : "Prefill"}</span>
+              <span className="eyebrow">{completedPrefill ? t("panel.prefillLastCompleted") : t("panel.prefill")}</span>
               <div className="big-num sp-big-lg">
                 {!measured ? (
                   <span title={llm?.measurementError ?? undefined}>—</span>
                 ) : llm?.prefillActive && prefillTps <= 0 ? (
                   <>
                     <span className="ov-tps__dots" aria-hidden />
-                    <small title={isStrata ? "A prompt is being processed; no current prefill rate is available." : "A prompt is being processed. The engine reports its speed only when the request finishes."}>prefilling</small>
+                    <small title={isStrata ? t("panel.prefillingStrataTitle") : t("panel.prefillingTitle")}>{t("panel.prefilling")}</small>
                   </>
                 ) : isTensorFold && prefillTps <= 0 && !completedPrefill ? (
-                  <span title="No current prefill measurement; zero is not evidence that no prompt is being processed.">—</span>
+                  <span title={t("panel.noPrefillMeasurementTitle")}>—</span>
                 ) : (
                   <>
                     {fmtTps(prefillTps)}
@@ -851,12 +866,12 @@ export function LlmPanel({
                 )}
               </div>
               <TrendLine data={prefillHistory} height={44} color="var(--color-info)" />
-              {prefillAvg != null && <span className="sp-avg mono">avg {fmtAvg(prefillAvg)}</span>}
-              {isStrata && prefillTps > 0 && <span className="sp-avg">last reported mean</span>}
-              {isTensorFold && !completedPrefill && prefillTps <= 0 && <span className="sp-avg">Not measured live</span>}
+              {prefillAvg != null && <span className="sp-avg mono">{t("panel.avg", { value: fmtAvg(prefillAvg) })}</span>}
+              {isStrata && prefillTps > 0 && <span className="sp-avg">{t("panel.lastReportedMean")}</span>}
+              {isTensorFold && !completedPrefill && prefillTps <= 0 && <span className="sp-avg">{t("panel.notMeasuredLive")}</span>}
               {measured && completedPrefill && (
-                <span className="sp-avg" title="Token and prefill-time deltas over requests that finished in the same window; not continuous live throughput.">
-                  Effective rate · includes cached tokens
+                <span className="sp-avg" title={t("panel.effectiveRateTitle")}>
+                  {t("panel.effectiveRate")}
                 </span>
               )}
             </div>
@@ -865,71 +880,71 @@ export function LlmPanel({
             <div className="sp-decode sp-decode--split">
               <div
                 className="sp-metric"
-                title="Prefill tokens served from prefix cache (little GPU work). High values mean prompt reuse, not a faster cold prefill."
+                title={t("panel.cachedPrefillTitle")}
               >
-                <span className="eyebrow">Cached prefill</span>
+                <span className="eyebrow">{t("panel.cachedPrefill")}</span>
                 <div className="big-num sp-big-md">
                   {fmtTps(cachedPrefillTps)}
                   <small>tok/s</small>
                 </div>
                 <TrendLine data={cachedPrefillHistory} height={30} color="var(--color-muted)" />
-                {cachedPrefillAvg != null && <span className="sp-avg mono">avg {fmtAvg(cachedPrefillAvg)}</span>}
+                {cachedPrefillAvg != null && <span className="sp-avg mono">{t("panel.avg", { value: fmtAvg(cachedPrefillAvg) })}</span>}
               </div>
               <div
                 className="sp-metric"
-                title="Uncached (computed) prefill — tokens that actually build KV cache on the GPU."
+                title={t("panel.uncachedPrefillTitle")}
               >
-                <span className="eyebrow">Uncached prefill</span>
+                <span className="eyebrow">{t("panel.uncachedPrefill")}</span>
                 <div className="big-num sp-big-md">
                   {fmtTps(uncachedPrefillTps)}
                   <small>tok/s</small>
                 </div>
                 <TrendLine data={uncachedPrefillHistory} height={30} color="var(--color-violet)" />
-                {uncachedPrefillAvg != null && <span className="sp-avg mono">avg {fmtAvg(uncachedPrefillAvg)}</span>}
+                {uncachedPrefillAvg != null && <span className="sp-avg mono">{t("panel.avg", { value: fmtAvg(uncachedPrefillAvg) })}</span>}
               </div>
             </div>
           )}
 
           <div className="sp-tiles">
-            {showEngineTiles && kvValue != null && tile("kvCache", "KV cache", kvValue, { tone: kvTone, sub: kvSub || undefined })}
+            {showEngineTiles && kvValue != null && tile("kvCache", t("tiles.kvCache"), kvValue, { tone: kvTone, sub: kvSub || undefined })}
             {showEngineTiles &&
               llm?.requestsRunning != null &&
               tile(
                 "requests",
-                "Running / waiting",
+                t("tiles.requests"),
                 `${Math.round(llm.requestsRunning)} / ${llm.requestsWaiting != null ? Math.round(llm.requestsWaiting) : "—"}`,
                 { align: "right" }
               )}
-            {isFreeToken && llm?.ttftSeconds != null && tile("ttftMean", "TTFT mean", `${Math.round(llm.ttftSeconds * 1000)} ms`)}
-            {showEngineTiles && llm?.ttftP95Seconds != null && tile("ttftP95", "TTFT p95", `${Math.round(llm.ttftP95Seconds * 1000)} ms`)}
+            {isFreeToken && llm?.ttftSeconds != null && tile("ttftMean", t("tiles.ttftMean"), `${Math.round(llm.ttftSeconds * 1000)} ms`)}
+            {showEngineTiles && llm?.ttftP95Seconds != null && tile("ttftP95", t("tiles.ttftP95"), `${Math.round(llm.ttftP95Seconds * 1000)} ms`)}
             {showEngineTiles &&
               llm?.preemptionsTotal != null &&
-              tile("preempts", "Preempts", Math.round(llm.preemptionsTotal).toLocaleString(), { align: "right" })}
+              tile("preempts", t("tiles.preempts"), Math.round(llm.preemptionsTotal).toLocaleString(), { align: "right" })}
             {showEngineTiles &&
               llm?.prefixCacheHitRate != null &&
-              tile("prefixCache", "Prefix hit", `${(llm.prefixCacheHitRate * 100).toFixed(0)}%`)}
-            {showEngineTiles && llm?.e2eP95Seconds != null && tile("e2eP95", "E2E p95", `${llm.e2eP95Seconds.toFixed(2)}s`, { align: "right" })}
-            {showEngineTiles && llm?.itlP95Seconds != null && tile("itlP95", "Inter-token p95", `${Math.round(llm.itlP95Seconds * 1000)} ms`)}
+              tile("prefixCache", t("tiles.prefixCache"), `${(llm.prefixCacheHitRate * 100).toFixed(0)}%`)}
+            {showEngineTiles && llm?.e2eP95Seconds != null && tile("e2eP95", t("tiles.e2eP95"), `${llm.e2eP95Seconds.toFixed(2)}s`, { align: "right" })}
+            {showEngineTiles && llm?.itlP95Seconds != null && tile("itlP95", t("tiles.itlP95"), `${Math.round(llm.itlP95Seconds * 1000)} ms`)}
             {showEngineTiles &&
               llm?.mtpAcceptanceRate != null &&
-              tile("mtpAccept", "MTP accept", llm.mtpAcceptanceRate.toFixed(2), { align: "right" })}
+              tile("mtpAccept", t("tiles.mtpAccept"), llm.mtpAcceptanceRate.toFixed(2), { align: "right" })}
             <div className="sp-tile">
               <b>
                 {(llm?.slotsTotal ?? 0) > 0
                   ? `${llm?.slotsActive ?? "?"} / ${llm?.slotsTotal ?? 0}`
                   : (llm?.slotsActive ?? 0) > 0
-                    ? `${llm?.slotsActive} running`
+                    ? t("panel.slotsRunning", { n: llm?.slotsActive })
                     : "—"}
               </b>
-              <span>Slots</span>
+              <span>{t("panel.slots")}</span>
             </div>
             <div className="sp-tile">
               <b>{llm?.contextLength ? llm.contextLength.toLocaleString() : "—"}</b>
-              <span>Context</span>
+              <span>{t("panel.context")}</span>
             </div>
             <div className="sp-tile">
               {(() => {
-                const engine = engineStateLabel(llm);
+                const engine = engineStateLabel(llm, t);
                 return (
                   <b className={engine.muted ? "text-muted" : undefined} title={engine.title}>
                     {engine.text}
@@ -937,7 +952,7 @@ export function LlmPanel({
                 );
               })()}
               <div className="sp-tile__label">
-                <span>Engine</span>
+                <span>{t("panel.engine")}</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -949,7 +964,7 @@ export function LlmPanel({
                   onMouseEnter={clearEngineInfoTimer}
                   onMouseLeave={startEngineInfoTimer}
                   className="relative cursor-pointer opacity-60 hover:opacity-100"
-                  aria-label="Engine state info"
+                  aria-label={t("panel.engineInfoAria")}
                 >
                   <InfoIcon className="h-2.5 w-2.5" />
                   {engineInfoOpen && (
@@ -958,15 +973,15 @@ export function LlmPanel({
                       onMouseLeave={startEngineInfoTimer}
                       className="absolute left-0 top-full z-10 mt-1 w-56 rounded-xl border border-border-strong bg-surface-elevated px-3 py-2 text-left text-[11px] font-normal normal-case text-text shadow-lg"
                     >
-                      Active = processing or ready for requests. Sleeping = idle, GPU memory freed until next request.
+                      {t("panel.engineInfo")}
                     </div>
                   )}
                 </button>
               </div>
             </div>
-            <div className="sp-tile" title={ENGINE_GENERATED_TITLE}>
+            <div className="sp-tile" title={t("tokens.engineGeneratedTitle")}>
               <b>{llm && llm.totalOutputTokens > 0 ? llm.totalOutputTokens.toLocaleString() : "—"}</b>
-              <span>{ENGINE_GENERATED_LABEL}</span>
+              <span>{t("tokens.engineGenerated")}</span>
             </div>
           </div>
 
