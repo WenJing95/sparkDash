@@ -1,3 +1,6 @@
+import { useTranslation } from "react-i18next";
+import { SNAPSHOT_INVALID_PAYLOAD, SNAPSHOT_MALFORMED } from "../../hooks/useSnapshot";
+
 type ConnectionBannerProps = {
   connected: boolean;
   lastValidSnapshotAt: number | null;
@@ -20,24 +23,28 @@ export function ConnectionBanner({
   now,
   stale,
 }: ConnectionBannerProps) {
+  const { t } = useTranslation("common");
   if (connected && !snapshotError && !stale) return null;
 
-  let message = "Connecting to live telemetry…";
-  if (snapshotError) message = snapshotError;
+  let message = t("connection.connecting");
+  // The hook's own two messages are translated; anything else is shown as received.
+  if (snapshotError === SNAPSHOT_INVALID_PAYLOAD) message = t("connection.invalidPayload");
+  else if (snapshotError === SNAPSHOT_MALFORMED) message = t("connection.malformed");
+  else if (snapshotError) message = snapshotError;
   else if (lastValidSnapshotAt != null) {
     const age = formatAge(now - lastValidSnapshotAt);
     message = connected
-      ? `Telemetry is stale. Last valid update was ${age} ago.`
-      : `Live telemetry disconnected. Showing data from ${age} ago.`;
+      ? t("connection.staleSince", { age })
+      : t("connection.disconnectedSince", { age });
   } else if (!connected) {
-    message = "Live telemetry is disconnected. Waiting for the first valid update…";
+    message = t("connection.disconnectedWaiting");
   }
 
   const announced = snapshotError
-    ? "Telemetry data error."
+    ? t("connection.announceError")
     : connected
-      ? "Telemetry is stale."
-      : "Live telemetry is disconnected.";
+      ? t("connection.announceStale")
+      : t("connection.announceDisconnected");
 
   return (
     <div className="connection-banner">

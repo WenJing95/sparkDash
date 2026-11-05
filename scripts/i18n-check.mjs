@@ -81,12 +81,16 @@ export function scanTranslationSource(source, file = "<source>") {
   const usages = [];
   const hooks = new Map();
   const hookNames = new Set(["useTranslation"]);
+  const transNames = new Set();
 
   walk(ast, (node) => {
     if (node.type !== "ImportDeclaration" || literalString(node.source) !== "react-i18next") return;
     for (const specifier of node.specifiers) {
       if (specifier.type === "ImportSpecifier" && specifier.imported?.name === "useTranslation") {
         hookNames.add(specifier.local.name);
+      }
+      if (specifier.type === "ImportSpecifier" && specifier.imported?.name === "Trans") {
+        transNames.add(specifier.local.name);
       }
     }
   });
@@ -114,6 +118,23 @@ export function scanTranslationSource(source, file = "<source>") {
 
   if (hooks.size) throw new Error(`${file}: useTranslation result must destructure t`);
 
+  // Helpers outside components receive t from their caller. Annotating the parameter
+  // as TFunction<"namespace"> lets their keys be checked like hook-bound calls.
+  walk(ast, (node) => {
+    if (!["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"].includes(node.type)) return;
+    for (const param of node.params ?? []) {
+      const type = param?.type === "Identifier" ? param.typeAnnotation?.typeAnnotation : null;
+      if (type?.type !== "TSTypeReference" || type.typeName?.type !== "Identifier" || type.typeName.name !== "TFunction") continue;
+      const namespace = literalString(type.typeArguments?.params?.[0]?.literal);
+      if (!namespace) throw new Error(`${file}: TFunction parameter ${param.name} must name its namespace, e.g. TFunction<"common">`);
+      const existingNamespace = bindings.get(param.name);
+      if (existingNamespace && existingNamespace !== namespace) {
+        throw new Error(`${file}: ambiguous translation binding ${param.name} uses both ${existingNamespace} and ${namespace}`);
+      }
+      bindings.set(param.name, namespace);
+    }
+  });
+
   walk(ast, (node) => {
     if (node.type !== "CallExpression" || node.callee?.type !== "Identifier") return;
     const namespace = bindings.get(node.callee.name);
@@ -124,7 +145,40 @@ export function scanTranslationSource(source, file = "<source>") {
     usages.push({ file, namespace, key });
   });
 
+  // <Trans t={t} i18nKey="…"> from react-i18next: the key is checked like a t() call,
+  // in the namespace of the t it is given (or its ns="…" when it has no t).
+  walk(ast, (node) => {
+    if (node.type !== "JSXOpeningElement" || node.name?.type !== "JSXIdentifier" || !transNames.has(node.name.name)) return;
+    const attributes = new Map();
+    for (const attribute of node.attributes ?? []) {
+      if (attribute.type === "JSXAttribute" && attribute.name?.type === "JSXIdentifier") attributes.set(attribute.name.name, attribute.value);
+    }
+    if (attributes.has("defaults")) throw new Error(`${file}: inline translation fallback defaults are not allowed`);
+    const key = jsxStaticString(attributes.get("i18nKey"));
+    if (!key) throw new Error(`${file}: <${node.name.name}> needs a static string i18nKey`);
+    let namespace = null;
+    if (attributes.has("t")) {
+      const value = attributes.get("t");
+      const expression = value?.type === "JSXExpressionContainer" ? value.expression : null;
+      namespace = expression?.type === "Identifier" ? bindings.get(expression.name) ?? null : null;
+      if (!namespace) throw new Error(`${file}: <${node.name.name}> t must be a translation binding from useTranslation or a TFunction parameter`);
+    } else if (attributes.has("ns")) {
+      namespace = jsxStaticString(attributes.get("ns"));
+      if (!namespace) throw new Error(`${file}: <${node.name.name}> ns must be a static string`);
+    } else {
+      throw new Error(`${file}: <${node.name.name}> needs a t={t} or ns="…" attribute to name its namespace`);
+    }
+    usages.push({ file, namespace, key });
+  });
+
   return usages;
+}
+
+/** A JSX attribute value that is a string literal: key="a.b" or key={"a.b"}. */
+function jsxStaticString(value) {
+  if (!value) return null;
+  if (value.type === "JSXExpressionContainer") return literalString(value.expression);
+  return literalString(value);
 }
 
 export function flattenCatalog(catalog, prefix = "", result = new Map()) {
@@ -184,13 +238,16 @@ function sameParameters(source, target) {
   return JSON.stringify(interpolationParameters(source)) === JSON.stringify(interpolationParameters(target));
 }
 
-/** Validates only keys that source code wires to t(); it intentionally is not a whole-catalog completeness check. */
+/** Validates keys that source code wires to t(), and that every English message has a translation in each target language. */
 export function validateCatalogs({ catalogs, usages }) {
   const errors = [];
   const sourceCatalogs = catalogs[SOURCE_LANGUAGE] ?? {};
 
   for (const [language, namespaces] of Object.entries(catalogs)) {
     if (language === SOURCE_LANGUAGE) continue;
+    for (const namespace of Object.keys(sourceCatalogs)) {
+      if (!namespaces[namespace]) errors.push(`${language}/${namespace}: missing catalog for en/${namespace}.json`);
+    }
     for (const [namespace, target] of Object.entries(namespaces)) {
       const source = sourceCatalogs[namespace];
       if (!source) {
@@ -199,6 +256,11 @@ export function validateCatalogs({ catalogs, usages }) {
       }
       for (const key of target.keys()) {
         if (!source.has(key)) errors.push(`${language}/${namespace}: orphan target key ${key}`);
+      }
+      // Every English message needs a reviewed translation, wired or not, so a page
+      // cannot silently fall back to English after its keys are added.
+      for (const key of source.keys()) {
+        if (!target.has(key)) errors.push(`${language}/${namespace}: missing target key ${key}`);
       }
     }
   }

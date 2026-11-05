@@ -1,0 +1,154 @@
+{
+  "actions": {
+    "cancel": "Cancel",
+    "dismiss": "Dismiss",
+    "delete": "Delete",
+    "deleting": "Deleting…"
+  },
+  "status": {
+    "online": "online",
+    "offline": "offline"
+  },
+  "theme": {
+    "white": "white",
+    "light": "light",
+    "dark": "dark",
+    "oled": "oled",
+    "title": "Theme: {{name}}",
+    "switchAria": "Switch theme (currently {{name}})"
+  },
+  "connection": {
+    "connecting": "Connecting to live telemetry…",
+    "staleSince": "Telemetry is stale. Last valid update was {{age}} ago.",
+    "disconnectedSince": "Live telemetry disconnected. Showing data from {{age}} ago.",
+    "disconnectedWaiting": "Live telemetry is disconnected. Waiting for the first valid update…",
+    "announceError": "Telemetry data error.",
+    "announceStale": "Telemetry is stale.",
+    "announceDisconnected": "Live telemetry is disconnected.",
+    "invalidPayload": "The server sent an invalid telemetry payload.",
+    "malformed": "The server sent malformed telemetry data."
+  },
+  "errorBanner": {
+    "dismissAria": "Dismiss error"
+  },
+  "capabilities": {
+    "allPassed": "All required capabilities passed.",
+    "someFailed": "One or more required capabilities failed.",
+    "pass": "Pass",
+    "fail": "Fail",
+    "skippedTitle": "Skipped",
+    "ok": "ok",
+    "failed": "failed",
+    "skipped": "skipped"
+  },
+  "health": {
+    "findingsAria": "Health findings",
+    "more": "+{{n}} more",
+    "critical": "Critical",
+    "warning": "Warning"
+  },
+  "chart": {
+    "emptyRange": "No data in this range yet.",
+    "pointNoData": "{{title}}: no data",
+    "noData": "No data",
+    "total": "Total"
+  },
+  "terminal": {
+    "waiting": "Waiting for output…",
+    "aria": "Command output",
+    "hiddenLines": "… {{n}} earlier lines hidden (copy gets everything)",
+    "noOutput": "No output."
+  },
+  "restart": {
+    "restarting": "Restarting…",
+    "confirmAria": "Confirm restart",
+    "confirmText": "Restart now? Running benchmarks will be interrupted.",
+    "restart": "Restart",
+    "failedRetry": "Restart failed — retry",
+    "restartApp": "Restart sparkDash"
+  },
+  "clear": {
+    "note": "This can't be undone.",
+    "nothing": "Nothing to delete",
+    "deleted_one": "Deleted {{count}} event",
+    "deleted_other": "Deleted {{count}} events",
+    "failed": "Could not delete"
+  },
+  "vram": {
+    "free": "{{size}} free",
+    "unified": "Unified memory",
+    "vram": "VRAM",
+    "usedOf": "{{pool}} · {{used}} of {{total}} used",
+    "engine": "Engine",
+    "weights": "Weights",
+    "kvPool": "KV pool",
+    "kvInUse": "KV in use",
+    "notReportedBy": "not reported by {{backend}}",
+    "notReportedThisBackend": "not reported by this backend",
+    "systemCpu": "System / CPU",
+    "otherGpu": "Other GPU",
+    "gpu": "GPU",
+    "freeLabel": "Free",
+    "legend": {
+      "engine": "Model",
+      "system": "System",
+      "other": "Other",
+      "gpu": "GPU"
+    },
+    "verdict": {
+      "veryLow": "Very low headroom",
+      "low": "Low headroom",
+      "unifiedRisk": "{{lead}}: CPU-side growth could trigger the OOM killer",
+      "discreteRisk": "{{lead}}: a new GPU allocation could fail with out of memory",
+      "kvFull": "Engine KV pool nearly full: new requests queue or get preempted",
+      "plenty": "Plenty of headroom"
+    }
+  },
+  "shutdown": {
+    "shutDown": "Shut down",
+    "dangerTitle": "Danger zone — {{title}}",
+    "stopsWork": "This stops running work.",
+    "powersOff": "This powers off hardware.",
+    "consequence": "Running containers and sessions will stop. The host powers off after a graceful stop.",
+    "acknowledge": "I understand this cannot be undone from the dashboard.",
+    "typeToConfirm": "Type <phrase/> to confirm",
+    "shuttingDown": "Shutting down…",
+    "allTitle": "Shut down all online Sparks",
+    "all": "Shut down all",
+    "allDialogTitle": "Shutdown All",
+    "allDescription_one": "Gracefully shut down all {{count}} online Spark? Offline nodes will be skipped.",
+    "allDescription_other": "Gracefully shut down all {{count}} online Sparks? Offline nodes will be skipped.",
+    "resultShutDown": "{{n}} shut down",
+    "resultFailed": "{{n}} failed",
+    "resultSkipped": "{{n}} skipped",
+    "resultSeparator": ", ",
+    "batchFailed": "Batch shutdown failed"
+  },
+  "openAccess": {
+    "explanation": "This dashboard is reachable from your network without a token, so anyone on it can change settings. Set SPARKDASH_TOKEN on the server to require one.",
+    "label": "Open access",
+    "dontShowAgain": "Don't show again"
+  },
+  "device": {
+    "spark": "Spark",
+    "host": "GPU Host",
+    "addSpark": "Add Spark",
+    "addHost": "Add GPU Host",
+    "editSpark": "Edit Spark",
+    "editHost": "Edit GPU Host",
+    "unitSpark": "NVIDIA DGX Spark",
+    "unitHost": "Dedicated GPU host (Linux, nvidia-smi, not a Spark)",
+    "unitWindows": "Windows PC (NVIDIA GPU or AMD Strix Halo)"
+  },
+  "llm": {
+    "idle": "Idle",
+    "idleSince": "Idle · last served {{since}} ago"
+  },
+  "launcherJob": {
+    "gone": "This job is no longer available on the server (a newer job replaced it, or the server restarted)."
+  },
+  "llmTarget": {
+    "enterHost": "Enter a host",
+    "invalidUrl": "Invalid URL"
+  }
+}

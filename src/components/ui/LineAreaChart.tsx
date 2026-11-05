@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { labelIndexes, niceScale } from "./chartScale";
 import { useElementWidth } from "./useElementWidth";
 import "../../styles/charts.css";
@@ -30,9 +31,10 @@ export function LineAreaChart({
   height = 200,
   format,
   unit,
-  empty = "No data in this range yet.",
+  empty,
   ariaLabel,
 }: LineAreaChartProps) {
+  const { t } = useTranslation("common");
   const gradId = useId();
   const [ref, width] = useElementWidth();
   const [hover, setHover] = useState<number | null>(null);
@@ -68,11 +70,11 @@ export function LineAreaChart({
             <stop offset="1" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        {scale.ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD.l} x2={width - PAD.r} y1={y(t)} y2={y(t)} className={t === 0 ? "chart__axis" : "chart__grid"} />
-            <text x={PAD.l - 6} y={y(t) + 3.5} textAnchor="end" className="chart__tick">
-              {format(t)}
+        {scale.ticks.map((tick) => (
+          <g key={tick}>
+            <line x1={PAD.l} x2={width - PAD.r} y1={y(tick)} y2={y(tick)} className={tick === 0 ? "chart__axis" : "chart__grid"} />
+            <text x={PAD.l - 6} y={y(tick) + 3.5} textAnchor="end" className="chart__tick">
+              {format(tick)}
             </text>
           </g>
         ))}
@@ -98,7 +100,7 @@ export function LineAreaChart({
               height={ih}
               fill="transparent"
               tabIndex={0}
-              aria-label={`${p.title}: ${p.value == null ? "no data" : format(p.value)}`}
+              aria-label={p.value == null ? t("chart.pointNoData", { title: p.title }) : `${p.title}: ${format(p.value)}`}
               onMouseEnter={() => setHover(i)}
               onFocus={() => setHover(i)}
               onBlur={() => setHover(null)}
@@ -111,12 +113,12 @@ export function LineAreaChart({
           </g>
         ))}
       </svg>
-      {max <= 0 ? <p className="chart__empty">{empty}</p> : null}
+      {max <= 0 ? <p className="chart__empty">{empty ?? t("chart.emptyRange")}</p> : null}
       {hovered ? (
         <div className="chart__tip" role="status" style={{ left: Math.min(Math.max(x(hover!), 90), width - 90) }}>
           <b>{hovered.title}</b>
           <span className="chart__tip-total">
-            {hovered.value == null ? "No data" : <em>{format(hovered.value)}{unit ? ` ${unit}` : ""}</em>}
+            {hovered.value == null ? t("chart.noData") : <em>{format(hovered.value)}{unit ? ` ${unit}` : ""}</em>}
           </span>
         </div>
       ) : null}

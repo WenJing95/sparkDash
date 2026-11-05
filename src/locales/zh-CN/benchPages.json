@@ -1,0 +1,96 @@
+{
+  "catalog": {
+    "decode": {
+      "label": "解码",
+      "blurb": "并发逐步提高时的生成速度（tokens/s）。"
+    },
+    "prefill": {
+      "label": "预填充",
+      "blurb": "不同上下文长度下的提示词处理速度和首 Token 延迟。"
+    },
+    "quality": {
+      "label": "质量测试",
+      "blurb": "固定题集、固定种子的质量测试，用于比较模型、量化方式和 KV 缓存格式。"
+    },
+    "toolEval": {
+      "label": "工具调用评测",
+      "blurb": "在 69 个确定性场景中评测工具调用质量（工具选择、参数、多步调用、安全）。"
+    }
+  },
+  "family": {
+    "toolEval": "工具调用评测"
+  },
+  "shell": {
+    "benchmarks": "基准测试",
+    "benchmarksFamily": "基准测试 · {{family}}",
+    "benchmark": "基准测试",
+    "runOn": "运行于",
+    "noSparks": "没有可用的 Spark",
+    "unknown": "未知的基准测试。"
+  },
+  "chips": {
+    "aria": "要测试的 Spark",
+    "workerTitle": "{{name}} 是工作节点：没有本地 LLM，只能查看已保存的结果",
+    "offlineTitle": "{{name}} 已离线",
+    "worker": "工作节点"
+  },
+  "target": {
+    "enterHost": "请输入要测试的 LLM 端点的主机地址。",
+    "noSparkTitle": "没有可测试的 Spark",
+    "noSparkBody": "请先在集群侧栏中添加一台 Spark。基准测试针对 Spark 上的 LLM 服务器运行，也可以针对你手动输入的远程端点运行。",
+    "offlineStrong": "{{name}} 已离线。",
+    "offlineText": "让它恢复在线后即可测试其 LLM，或把目标切换为“远程”并指向其他端点。下方已保存的运行记录仍可查看。",
+    "workerStrong": "{{name}} 是工作节点",
+    "workerText": "，自身不提供 LLM，因此这里无法运行测试。下方已保存的运行记录仍可查看。",
+    "unreachableStrong": "端口 {{port}} 上没有可访问的 LLM。",
+    "unreachableText": "在这台 Spark 上启动一个模型（在其页面的“模型”面板中），检查其设置中的 LLM 端口，或把目标切换为“远程”。下方已保存的运行记录仍可查看。",
+    "aria": "测试目标",
+    "remoteTitle": "测试其他 LLM 端点，而不是 Spark 上的 LLM",
+    "remote": "远程",
+    "llmPort": "LLM 端口",
+    "port": "端口 {{port}}",
+    "modelTitle": "此端口当前提供的模型",
+    "ctx": "上下文 {{size}}",
+    "host": "主机",
+    "remoteHost": "远程主机",
+    "portLabel": "端口",
+    "remotePort": "远程端口",
+    "hint": "按需端点：在你运行之前不会进行探测。远程设备使用局域网 HTTP；如果服务器只监听 127.0.0.1，可以通过 SSH 隧道连到本机回环地址。"
+  },
+  "live": {
+    "aria": "实时生成速度",
+    "label": "实时生成",
+    "peak": "峰值 {{tps}} tok/s"
+  },
+  "parts": {
+    "configAria": "运行配置",
+    "config": "配置",
+    "date": "日期",
+    "model": "模型",
+    "result": "结果",
+    "actions": "操作",
+    "status": {
+      "running": "运行中",
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    },
+    "open": "已打开",
+    "view": "查看",
+    "comparing": "对比中",
+    "compare": "对比",
+    "deleteTitle": "从历史记录中移除这次运行",
+    "delete": "删除"
+  },
+  "rows": {
+    "peakAt": "峰值在 ×{{concurrency}}",
+    "perStream": "×1 时每路 {{tps}}",
+    "samplingOn": "温度 {{temp}} · 开启思考",
+    "samplingOff": "温度 {{temp}} · 关闭思考",
+    "topK": " · top_k {{topK}}",
+    "startCtx": "起始上下文 {{size}}",
+    "bestAt": "{{size}} 时最快",
+    "categories_one": "{{count}} 个分类",
+    "categories_other": "{{count}} 个分类"
+  }
+}

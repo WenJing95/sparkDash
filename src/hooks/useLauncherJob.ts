@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cancelLauncherJob, readLauncherJob } from "../api/client";
 import type { LauncherJob } from "../api/types";
 
@@ -37,6 +38,7 @@ export function useLauncherJob(sparkId: string) {
   const [lines, setLines] = useState<JobLine[]>([]);
   const [partial, setPartial] = useState("");
   const [truncated, setTruncated] = useState(false);
+  const { t } = useTranslation("common");
   const [error, setError] = useState<string | null>(null);
   const sinceRef = useRef(0);
   const runningId = job?.status === "running" ? job.id : null;
@@ -136,5 +138,7 @@ export function useLauncherJob(sparkId: string) {
     sinceRef.current = 0;
   }, []);
 
-  return { job, lines, partial, truncated, error, follow, cancel, clear };
+  // The job-gone note is ours and follows the UI language; server errors pass through verbatim.
+  const shownError = error === JOB_GONE_MESSAGE ? t("launcherJob.gone") : error;
+  return { job, lines, partial, truncated, error: shownError, follow, cancel, clear };
 }

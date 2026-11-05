@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SparkSnapshot } from "../../api/types";
 import { isWorkerSpark } from "../../api/sparkRole";
 import { measuredGenerationTps } from "../../shared/llmRate";
@@ -14,6 +15,14 @@ export function railSubLabel(spark: SparkSnapshot): string {
   const tps = primaryDecodeTps(spark);
   if (tps != null) return tps >= 100 ? tps.toFixed(0) : tps.toFixed(1);
   return isWorkerSpark(spark) ? "worker" : "—";
+}
+
+/** railSubLabel with its status words in the UI language (numbers and "—" are unchanged). */
+export function railSubLabelText(t: TFunction<"shell">, spark: SparkSnapshot): string {
+  if (!spark.online) return t("rail.off");
+  const tps = primaryDecodeTps(spark);
+  if (tps != null) return tps >= 100 ? tps.toFixed(0) : tps.toFixed(1);
+  return isWorkerSpark(spark) ? t("rail.worker") : "—";
 }
 
 export function isThrottling(spark: SparkSnapshot): boolean {

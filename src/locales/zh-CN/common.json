@@ -1,0 +1,154 @@
+{
+  "actions": {
+    "cancel": "取消",
+    "dismiss": "关闭",
+    "delete": "删除",
+    "deleting": "正在删除…"
+  },
+  "status": {
+    "online": "在线",
+    "offline": "离线"
+  },
+  "theme": {
+    "white": "白色",
+    "light": "浅色",
+    "dark": "深色",
+    "oled": "OLED",
+    "title": "主题：{{name}}",
+    "switchAria": "切换主题（当前：{{name}}）"
+  },
+  "connection": {
+    "connecting": "正在连接实时监控数据…",
+    "staleSince": "监控数据已过期。最后一次有效更新在 {{age}} 前。",
+    "disconnectedSince": "实时监控数据已断开，正在显示 {{age}} 前的数据。",
+    "disconnectedWaiting": "实时监控数据已断开，正在等待第一次有效更新…",
+    "announceError": "监控数据出错。",
+    "announceStale": "监控数据已过期。",
+    "announceDisconnected": "实时监控数据已断开。",
+    "invalidPayload": "服务器发送的监控数据无效。",
+    "malformed": "服务器发送的监控数据格式错误。"
+  },
+  "errorBanner": {
+    "dismissAria": "关闭错误提示"
+  },
+  "capabilities": {
+    "allPassed": "所有必需检查项均已通过。",
+    "someFailed": "有必需检查项未通过。",
+    "pass": "通过",
+    "fail": "失败",
+    "skippedTitle": "已跳过",
+    "ok": "正常",
+    "failed": "失败",
+    "skipped": "已跳过"
+  },
+  "health": {
+    "findingsAria": "健康检查结果",
+    "more": "另有 {{n}} 项",
+    "critical": "严重",
+    "warning": "警告"
+  },
+  "chart": {
+    "emptyRange": "此时间范围内暂无数据。",
+    "pointNoData": "{{title}}：无数据",
+    "noData": "无数据",
+    "total": "合计"
+  },
+  "terminal": {
+    "waiting": "正在等待输出…",
+    "aria": "命令输出",
+    "hiddenLines": "… 已隐藏较早的 {{n}} 行（复制时包含全部内容）",
+    "noOutput": "无输出。"
+  },
+  "restart": {
+    "restarting": "正在重启…",
+    "confirmAria": "确认重启",
+    "confirmText": "确定立即重启？正在运行的基准测试会被中断。",
+    "restart": "重启",
+    "failedRetry": "重启失败，点击重试",
+    "restartApp": "重启 sparkDash"
+  },
+  "clear": {
+    "note": "此操作无法撤销。",
+    "nothing": "没有可删除的内容",
+    "deleted_one": "已删除 {{count}} 条事件",
+    "deleted_other": "已删除 {{count}} 条事件",
+    "failed": "删除失败"
+  },
+  "vram": {
+    "free": "可用 {{size}}",
+    "unified": "统一内存",
+    "vram": "显存",
+    "usedOf": "{{pool}} · 已用 {{used}} / 共 {{total}}",
+    "engine": "推理引擎",
+    "weights": "权重",
+    "kvPool": "KV 缓存池",
+    "kvInUse": "KV 已用",
+    "notReportedBy": "{{backend}} 未提供",
+    "notReportedThisBackend": "当前后端未提供",
+    "systemCpu": "系统 / CPU",
+    "otherGpu": "其他 GPU 占用",
+    "gpu": "GPU",
+    "freeLabel": "可用",
+    "legend": {
+      "engine": "模型",
+      "system": "系统",
+      "other": "其他",
+      "gpu": "GPU"
+    },
+    "verdict": {
+      "veryLow": "内存余量极低",
+      "low": "内存余量不足",
+      "unifiedRisk": "{{lead}}：CPU 侧内存继续增长可能触发 OOM killer",
+      "discreteRisk": "{{lead}}：新的 GPU 内存分配可能因内存不足而失败",
+      "kvFull": "引擎 KV 缓存池即将用满：新请求会排队或被抢占",
+      "plenty": "内存余量充足"
+    }
+  },
+  "shutdown": {
+    "shutDown": "关机",
+    "dangerTitle": "危险操作：{{title}}",
+    "stopsWork": "此操作会中断正在运行的任务。",
+    "powersOff": "此操作会关闭硬件电源。",
+    "consequence": "正在运行的容器和会话将会停止，主机在正常停止后关机。",
+    "acknowledge": "我了解此操作无法在仪表盘中撤销。",
+    "typeToConfirm": "输入 <phrase/> 以确认",
+    "shuttingDown": "正在关机…",
+    "allTitle": "将所有在线 Spark 关机",
+    "all": "全部关机",
+    "allDialogTitle": "全部关机",
+    "allDescription_one": "确定将全部 {{count}} 台在线 Spark 正常关机？离线节点将被跳过。",
+    "allDescription_other": "确定将全部 {{count}} 台在线 Spark 正常关机？离线节点将被跳过。",
+    "resultShutDown": "{{n}} 台已关机",
+    "resultFailed": "{{n}} 台失败",
+    "resultSkipped": "{{n}} 台已跳过",
+    "resultSeparator": "，",
+    "batchFailed": "批量关机失败"
+  },
+  "openAccess": {
+    "explanation": "此仪表盘无需令牌即可从你的网络访问，网络中的任何人都能更改设置。在服务器上设置 SPARKDASH_TOKEN 即可要求令牌。",
+    "label": "开放访问",
+    "dontShowAgain": "不再显示"
+  },
+  "device": {
+    "spark": "Spark",
+    "host": "GPU 主机",
+    "addSpark": "添加 Spark",
+    "addHost": "添加 GPU 主机",
+    "editSpark": "编辑 Spark",
+    "editHost": "编辑 GPU 主机",
+    "unitSpark": "NVIDIA DGX Spark",
+    "unitHost": "专用 GPU 主机（Linux，nvidia-smi，非 Spark）",
+    "unitWindows": "Windows PC（NVIDIA GPU 或 AMD Strix Halo）"
+  },
+  "llm": {
+    "idle": "空闲",
+    "idleSince": "空闲 · {{since}} 前处理过请求"
+  },
+  "launcherJob": {
+    "gone": "服务器上已没有此任务（已被更新的任务替换，或服务器已重启）。"
+  },
+  "llmTarget": {
+    "enterHost": "请输入主机地址",
+    "invalidUrl": "URL 无效"
+  }
+}

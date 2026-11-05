@@ -1,0 +1,108 @@
+{
+  "pages": {
+    "overview": "Overview",
+    "tokens": "Token totals",
+    "cost": "Cost compare",
+    "energy": "Fleet energy",
+    "temps": "Temps",
+    "activity": "Activity",
+    "showcase": "Showcase",
+    "kiosk": "Kiosk",
+    "benchmarks": "Benchmarks",
+    "settings": "Settings"
+  },
+  "brand": {
+    "overviewAria": "sparkDash overview"
+  },
+  "sidebar": {
+    "navAria": "Fleet navigation",
+    "show": "Show sidebar",
+    "showTitle": "Show sidebar (Ctrl+B)",
+    "hide": "Hide sidebar",
+    "hideTitle": "Hide sidebar (Ctrl+B)",
+    "openPalette": "Open command palette",
+    "jumpTo": "Jump to…",
+    "sparks": "Sparks",
+    "addTitle": "Add Spark / GPU host",
+    "addAria": "Add Spark or GPU host",
+    "empty": "No Sparks yet. Use + to add one.",
+    "workspace": "Workspace",
+    "kioskTitle": "Full-screen wall display (Esc returns)",
+    "live": "Live",
+    "livePoll": "Live · {{seconds}} s poll",
+    "reconnecting": "Reconnecting…",
+    "credit": "by Mia's AI Lab",
+    "website": "Mia's AI Lab website",
+    "github": "sparkDash on GitHub",
+    "x": "Mia's AI Lab on X"
+  },
+  "rail": {
+    "off": "off",
+    "worker": "worker",
+    "prefilling": "prefilling",
+    "decoding": "decoding",
+    "dragTitle": "{{name}}. Drag to reorder (keyboard: M).",
+    "dragTitleOffline": "{{name}} (offline). Drag to reorder (keyboard: M).",
+    "dragInstructions": "Press Enter to open this Spark. To reorder it, press M, use the arrow keys to move it, then Enter to drop it or Escape to cancel.",
+    "dragStart": "Picked up draggable item {{id}}.",
+    "dragOver": "Draggable item {{id}} was moved over droppable area {{over}}.",
+    "dragOverNone": "Draggable item {{id}} is no longer over a droppable area.",
+    "dragEnd": "Draggable item {{id}} was dropped over droppable area {{over}}",
+    "dragEndNone": "Draggable item {{id}} was dropped.",
+    "dragCancel": "Dragging was cancelled. Draggable item {{id}} was dropped."
+  },
+  "palette": {
+    "aria": "Command palette",
+    "placeholder": "Jump to a Spark, run an action, open settings…",
+    "searchAria": "Search commands",
+    "listAria": "Commands",
+    "noMatch": "No match for “{{query}}”.",
+    "move": "↑↓ to move",
+    "open": "↵ to open",
+    "close": "Esc to close",
+    "groupGoTo": "Go to",
+    "groupBenchmarks": "Benchmarks",
+    "groupActions": "Actions",
+    "hintFleet": "Fleet",
+    "hintPage": "Page",
+    "hintWallDisplay": "Wall display",
+    "benchmark": "{{name}} benchmark",
+    "addDevice": "Add a Spark or GPU host",
+    "openShowcase": "Open showcase on {{name}} in a new window",
+    "edit": "Edit {{name}}",
+    "switchTheme": "Switch theme",
+    "themeHint": "white · light · dark · oled",
+    "toggleSidebar": "Show or hide the sidebar",
+    "openSettings": "Open settings",
+    "harness": "Set up harness sessions"
+  },
+  "app": {
+    "loadSettingsFailed": "Could not load settings: {{error}}. Reload to retry.",
+    "refreshFailed": "Could not refresh Sparks: {{error}}. Previous data remains visible.",
+    "reorderFailed": "Could not save the Spark order: {{error}}. The previous order was restored.",
+    "emptyTitle": "No Spark registered",
+    "emptyText": "Add a DGX Spark or GPU host to start monitoring.",
+    "emptyAdd": "Add Spark"
+  },
+  "mobile": {
+    "navAria": "Primary",
+    "sparks": "Sparks",
+    "stats": "Stats",
+    "chooseSpark": "Choose a Spark",
+    "add": "Add Spark / GPU host",
+    "fleet": "Fleet"
+  },
+  "install": {
+    "aria": "Install sparkDash",
+    "title": "Install sparkDash",
+    "text": "Add to your home screen for a fullscreen, app-like dashboard.",
+    "install": "Install",
+    "iosTitle": "Install sparkDash on your iPhone",
+    "iosSteps": "Tap the <share>Share</share> icon <arrow>⬆︎</arrow> in Safari, then <add>Add to Home Screen</add>."
+  },
+  "alerts": {
+    "notifyCritical": "Critical · {{unit}}",
+    "notifyWarning": "Warning · {{unit}}",
+    "notifyBody": "{{label}} — {{detail}}"
+  }
+}

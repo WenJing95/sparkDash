@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SparkSnapshot } from "../api/types";
 import { shutdownAllSparks } from "../api/client";
 import { ConfirmShutdownDialog } from "./ConfirmShutdownDialog";
-import { shutdownWarnings } from "./OverviewPage/fleetStats";
+import { shutdownWarningsText } from "./OverviewPage/fleetStats";
 import { PowerOffIcon } from "./ui/icons";
 
 /**
@@ -10,9 +11,14 @@ import { PowerOffIcon } from "./ui/icons";
  * and in the mobile Sparks sheet, so the flow exists once.
  */
 export function ShutdownAll({ sparks, className = "" }: { sparks: SparkSnapshot[]; className?: string }) {
+  const { t } = useTranslation("common");
+  const { t: to } = useTranslation("overview");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
+  // Counts (or the raw server error) are kept, not text, so the message follows a language switch.
+  const [msg, setMsg] = useState<
+    { kind: "result"; ok: number; fail: number; skipped: number } | { kind: "error"; error: string | null } | null
+  >(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
@@ -27,12 +33,9 @@ export function ShutdownAll({ sparks, className = "" }: { sparks: SparkSnapshot[
       const ok = res.results.filter((r) => r.ok).length;
       const fail = res.results.filter((r) => !r.ok && !r.skipped).length;
       const skipped = res.results.filter((r) => r.skipped).length;
-      const parts = [`${ok} shut down`];
-      if (fail) parts.push(`${fail} failed`);
-      if (skipped) parts.push(`${skipped} skipped`);
-      setMsg({ text: parts.join(", "), tone: fail === 0 ? "ok" : "err" });
+      setMsg({ kind: "result", ok, fail, skipped });
     } catch (err: unknown) {
-      setMsg({ text: err instanceof Error ? err.message : "Batch shutdown failed", tone: "err" });
+      setMsg({ kind: "error", error: err instanceof Error ? err.message : null });
     } finally {
       setBusy(false);
       clearTimeout(timer.current);
@@ -40,31 +43,42 @@ export function ShutdownAll({ sparks, className = "" }: { sparks: SparkSnapshot[
     }
   }
 
+  let msgText = "";
+  if (msg?.kind === "result") {
+    const parts = [t("shutdown.resultShutDown", { n: msg.ok })];
+    if (msg.fail) parts.push(t("shutdown.resultFailed", { n: msg.fail }));
+    if (msg.skipped) parts.push(t("shutdown.resultSkipped", { n: msg.skipped }));
+    msgText = parts.join(t("shutdown.resultSeparator"));
+  } else if (msg?.kind === "error") {
+    msgText = msg.error ?? t("shutdown.batchFailed");
+  }
+  const msgOk = msg?.kind === "result" && msg.fail === 0;
+
   return (
     <>
       {msg ? (
-        <span className={`ov-batchmsg ${msg.tone === "ok" ? "is-ok" : "is-err"}`} role="status">
-          {msg.text}
+        <span className={`ov-batchmsg ${msgOk ? "is-ok" : "is-err"}`} role="status">
+          {msgText}
         </span>
       ) : null}
       <button
         type="button"
         onClick={() => setOpen(true)}
         disabled={busy || onlineCount === 0}
-        title="Shut down all online Sparks"
+        title={t("shutdown.allTitle")}
         className={`btn btn--danger ${className}`}
       >
         <PowerOffIcon className="h-3.5 w-3.5" />
-        Shut down all
+        {t("shutdown.all")}
       </button>
       <ConfirmShutdownDialog
         open={open}
         onClose={() => setOpen(false)}
         onConfirm={run}
-        title="Shutdown All"
-        description={`Gracefully shut down all ${onlineCount} online Spark${onlineCount === 1 ? "" : "s"}? Offline nodes will be skipped.`}
-        confirmLabel="Shut down all"
-        warnings={shutdownWarnings(sparks)}
+        title={t("shutdown.allDialogTitle")}
+        description={t("shutdown.allDescription", { count: onlineCount })}
+        confirmLabel={t("shutdown.all")}
+        warnings={shutdownWarningsText(to, sparks)}
       />
     </>
   );

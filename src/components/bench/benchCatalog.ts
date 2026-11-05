@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 /**
  * Every benchmark sparkDash has a page for (sidebar "Benchmarks" section).
  * Throughput, speculative decoding, context pressure, needle and decision-model runs are not
@@ -28,6 +30,43 @@ const BY_ID = new Map(BENCH_TYPES.map((b) => [b.id, b]));
 
 export function benchTypeById(id: string | null | undefined): BenchType | null {
   return (id && BY_ID.get(id)) || null;
+}
+
+/** Page title of a benchmark in the UI language (falls back to the catalog's English label). */
+export function benchLabel(t: TFunction<"benchPages">, bench: BenchType): string {
+  switch (bench.id) {
+    case "decode":
+      return t("catalog.decode.label");
+    case "prefill":
+      return t("catalog.prefill.label");
+    case "quality":
+      return t("catalog.quality.label");
+    case "tool-eval":
+      return t("catalog.toolEval.label");
+    default:
+      return bench.label;
+  }
+}
+
+/** One-line description of a benchmark in the UI language. */
+export function benchBlurb(t: TFunction<"benchPages">, bench: BenchType): string {
+  switch (bench.id) {
+    case "decode":
+      return t("catalog.decode.blurb");
+    case "prefill":
+      return t("catalog.prefill.blurb");
+    case "quality":
+      return t("catalog.quality.blurb");
+    case "tool-eval":
+      return t("catalog.toolEval.blurb");
+    default:
+      return bench.blurb;
+  }
+}
+
+/** Sidebar family heading in the UI language ("sparkDash" is a product name and stays as is). */
+export function benchFamily(t: TFunction<"benchPages">, family: BenchType["family"]): string {
+  return family === "Tool Eval Bench" ? t("family.toolEval") : family;
 }
 
 /** localStorage key remembering which Spark the benchmark pages act on. */

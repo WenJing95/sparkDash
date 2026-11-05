@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { FleetAlert } from "../components/OverviewPage/FleetAlertStrip";
+import { fleetAlertText } from "../components/OverviewPage/fleetExceptionText";
 import { BROWSER_ALERT_HOLD_MS, emptyDebounce, stepDebounce, type DebounceState } from "./alertDebounce";
 
 /**
@@ -172,6 +174,8 @@ export function useCountedAlerts(rows: FleetAlert[], ready: boolean, source: str
  * baseline: the same problems under the other side's keys are not news either.
  */
 export function useBrowserAlerts(rows: FleetAlert[], ready: boolean, source: "server" | "browser" = "browser"): void {
+  const { t } = useTranslation("shell");
+  const { t: to } = useTranslation("overview");
   const [prefs] = useBrowserAlertPrefs();
   const counted = useCountedAlerts(rows, ready, source);
   const count = counted?.length ?? 0;
@@ -245,8 +249,15 @@ export function useBrowserAlerts(rows: FleetAlert[], ready: boolean, source: "se
     for (const row of counted) {
       if (previous.has(row.key)) continue;
       try {
-        const n = new Notification(`${row.severity === "critical" ? "Critical" : "Warning"} · ${row.unitName}`, {
-          body: [row.label, row.detail].filter(Boolean).join(" — "),
+        const title =
+          row.severity === "critical"
+            ? t("alerts.notifyCritical", { unit: row.unitName })
+            : t("alerts.notifyWarning", { unit: row.unitName });
+        // Live conditions are worded in the current language; a server-only row keeps the server's text.
+        const text = fleetAlertText(to, row);
+        const body = text.label && text.detail ? t("alerts.notifyBody", { label: text.label, detail: text.detail }) : text.label || text.detail || "";
+        const n = new Notification(title, {
+          body,
           // Same key, same notification: the OS replaces it instead of stacking.
           tag: row.key,
         });
@@ -258,5 +269,5 @@ export function useBrowserAlerts(rows: FleetAlert[], ready: boolean, source: "se
         /* e.g. Android Chrome requires a service worker for notifications */
       }
     }
-  }, [counted, source, prefs.desktop]);
+  }, [counted, source, prefs.desktop, t, to]);
 }

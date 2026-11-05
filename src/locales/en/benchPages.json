@@ -1,0 +1,96 @@
+{
+  "catalog": {
+    "decode": {
+      "label": "Decode",
+      "blurb": "Generation speed (tokens/s) at rising concurrency."
+    },
+    "prefill": {
+      "label": "Prefill",
+      "blurb": "Prompt processing speed and time to first token across context sizes."
+    },
+    "quality": {
+      "label": "Quality",
+      "blurb": "A fixed, seeded quality suite to compare models, quantisations and KV-cache formats."
+    },
+    "toolEval": {
+      "label": "Tool Eval Bench",
+      "blurb": "Tool-calling quality across 69 deterministic scenarios (selection, parameters, multi-step, safety)."
+    }
+  },
+  "family": {
+    "toolEval": "Tool Eval Bench"
+  },
+  "shell": {
+    "benchmarks": "Benchmarks",
+    "benchmarksFamily": "Benchmarks · {{family}}",
+    "benchmark": "Benchmark",
+    "runOn": "Run on",
+    "noSparks": "No Sparks available",
+    "unknown": "Unknown benchmark."
+  },
+  "chips": {
+    "aria": "Spark to benchmark",
+    "workerTitle": "{{name}} is a worker: no local LLM, saved results only",
+    "offlineTitle": "{{name}} is offline",
+    "worker": "worker"
+  },
+  "target": {
+    "enterHost": "Enter the host of the LLM endpoint to benchmark.",
+    "noSparkTitle": "No Spark to benchmark",
+    "noSparkBody": "Add a Spark from the fleet rail first. Benchmarks run against the LLM server on a Spark, or on a Remote endpoint you type in.",
+    "offlineStrong": "{{name}} is offline.",
+    "offlineText": " Bring it back online to benchmark its LLM, or switch the target to Remote and point at another endpoint. Saved runs below are still readable.",
+    "workerStrong": "{{name}} is a worker",
+    "workerText": " and serves no LLM of its own, so nothing can run here. Saved runs below are still readable.",
+    "unreachableStrong": "No reachable LLM on port {{port}}.",
+    "unreachableText": "Start a model on this Spark (Models panel on its page), check the LLM port in its settings, or switch the target to Remote. Saved runs below are still readable.",
+    "aria": "Benchmark target",
+    "remoteTitle": "Benchmark another LLM endpoint instead of a Spark's",
+    "remote": "Remote",
+    "llmPort": "LLM port",
+    "port": "Port {{port}}",
+    "modelTitle": "Model currently served on this port",
+    "ctx": "ctx {{size}}",
+    "host": "Host",
+    "remoteHost": "Remote host",
+    "portLabel": "Port",
+    "remotePort": "Remote port",
+    "hint": "On-demand endpoint: nothing is probed until you run. Remote units use LAN HTTP, or an SSH tunnel to loopback if the server only listens on 127.0.0.1."
+  },
+  "live": {
+    "aria": "Live generation speed",
+    "label": "Live generation",
+    "peak": "peak {{tps}} tok/s"
+  },
+  "parts": {
+    "configAria": "Run configuration",
+    "config": "Configuration",
+    "date": "Date",
+    "model": "Model",
+    "result": "Result",
+    "actions": "Actions",
+    "status": {
+      "running": "running",
+      "completed": "completed",
+      "failed": "failed",
+      "cancelled": "cancelled"
+    },
+    "open": "Open",
+    "view": "View",
+    "comparing": "Comparing",
+    "compare": "Compare",
+    "deleteTitle": "Remove this run from the history",
+    "delete": "Delete"
+  },
+  "rows": {
+    "peakAt": "peak at ×{{concurrency}}",
+    "perStream": "{{tps}}/stream at ×1",
+    "samplingOn": "temp {{temp}} · thinking on",
+    "samplingOff": "temp {{temp}} · thinking off",
+    "topK": " · top_k {{topK}}",
+    "startCtx": "{{size}} start ctx",
+    "bestAt": "best at {{size}}",
+    "categories_one": "{{count}} category",
+    "categories_other": "{{count}} categories"
+  }
+}

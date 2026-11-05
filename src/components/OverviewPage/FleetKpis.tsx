@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import type { SparkSnapshot } from "../../api/types";
 import { fetchLlmTokenTotals } from "../../api/llmTokenClient";
 import { formatTokensCompact } from "../../shared/tokenFormat";
@@ -74,6 +75,7 @@ export function FleetKpis({
   snapshotKey?: unknown;
   show?: KpiVisibility;
 }) {
+  const { t: tr } = useTranslation("overview");
   const showDecode = show?.decode ?? true;
   const showPower = show?.power ?? true;
   const showMemory = show?.memory ?? true;
@@ -129,7 +131,7 @@ export function FleetKpis({
     <div className="ov-kpis" data-count={count}>
       {showDecode ? (
         <Kpi
-          label="Fleet decode"
+          label={tr("kpi.decode")}
           value={totals.decodeTps.toFixed(1)}
           unit="tok/s"
           trend={trends.decode}
@@ -138,7 +140,7 @@ export function FleetKpis({
       ) : null}
       {showPower ? (
         <Kpi
-          label="Fleet power"
+          label={tr("kpi.power")}
           value={totals.powerW == null ? "—" : totals.powerW.toFixed(0)}
           unit="W"
           trend={trends.power}
@@ -147,7 +149,7 @@ export function FleetKpis({
       ) : null}
       {showMemory ? (
         <Kpi
-          label="Memory in use"
+          label={tr("kpi.memory")}
           value={memGb.toFixed(0)}
           unit="GB"
           right={memPct != null ? <span className="ov-delta mono">{memPct}%</span> : undefined}
@@ -157,18 +159,18 @@ export function FleetKpis({
       ) : null}
       {!showTokens ? null : tokens && tokensCompact ? (
         <Kpi
-          label="Tokens in last 24 hours"
+          label={tr("kpi.tokens")}
           value={tokensCompact[1]}
           unit={tokensCompact[2] || "tok"}
-          foot={`generated · ${formatTokensCompact(tokens.prompt)} prefill`}
+          foot={tr("kpi.tokensFoot", { prefill: formatTokensCompact(tokens.prompt) })}
           color="var(--color-success)"
         />
       ) : (
         <Kpi
-          label="Online"
+          label={tr("kpi.online")}
           value={String(totals.online)}
-          unit={`/ ${totals.total} units`}
-          foot={totals.online === totals.total ? "all units reachable" : `${totals.total - totals.online} offline`}
+          unit={tr("kpi.onlineUnit", { total: totals.total })}
+          foot={totals.online === totals.total ? tr("kpi.allReachable") : tr("kpi.offline", { n: totals.total - totals.online })}
           color="var(--color-success)"
         />
       )}

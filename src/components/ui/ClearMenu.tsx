@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import "../../styles/clearmenu.css";
 
 export interface ClearChoice<T = number | string | undefined> {
@@ -16,7 +17,7 @@ export function ClearMenu<T>({
   choices,
   onRun,
   disabled,
-  note = "This can't be undone.",
+  note,
 }: {
   label: string;
   choices: readonly ClearChoice<T>[];
@@ -24,10 +25,12 @@ export function ClearMenu<T>({
   disabled?: boolean;
   note?: string;
 }) {
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const [pick, setPick] = useState<ClearChoice<T> | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // The outcome is kept as data so the toast follows a language switch; server errors stay verbatim.
+  const [msg, setMsg] = useState<{ ok: true; deleted: number } | { ok: false; error: string | null } | null>(null);
   const root = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -54,8 +57,8 @@ export function ClearMenu<T>({
 
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setMsg(null), 4000);
+    return () => clearTimeout(timer);
   }, [msg]);
 
   const run = async () => {
@@ -63,11 +66,11 @@ export function ClearMenu<T>({
     setBusy(true);
     try {
       const n = await onRun(pick.arg);
-      setMsg({ ok: true, text: n === 0 ? "Nothing to delete" : `Deleted ${n} event${n === 1 ? "" : "s"}` });
+      setMsg({ ok: true, deleted: n });
       setOpen(false);
       setPick(null);
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : "Could not delete" });
+      setMsg({ ok: false, error: err instanceof Error ? err.message : null });
     } finally {
       setBusy(false);
     }
@@ -93,13 +96,13 @@ export function ClearMenu<T>({
           {pick ? (
             <div className="ac-clear__confirm">
               <p>{pick.ask}</p>
-              <p className="ac-clear__note">{note}</p>
+              <p className="ac-clear__note">{note ?? t("clear.note")}</p>
               <div className="ac-clear__row">
                 <button type="button" className="btn btn--sm" onClick={() => setPick(null)} disabled={busy}>
-                  Cancel
+                  {t("actions.cancel")}
                 </button>
                 <button type="button" className="btn btn--sm btn--danger" onClick={() => void run()} disabled={busy}>
-                  {busy ? "Deleting…" : "Delete"}
+                  {busy ? t("actions.deleting") : t("actions.delete")}
                 </button>
               </div>
             </div>
@@ -113,7 +116,13 @@ export function ClearMenu<T>({
         </div>
       ) : null}
       <span className={`ac-toast${msg ? (msg.ok ? " is-ok" : " is-err") : ""}`} role="status" aria-live="polite">
-        {msg?.text}
+        {msg == null
+          ? null
+          : msg.ok
+            ? msg.deleted === 0
+              ? t("clear.nothing")
+              : t("clear.deleted", { count: msg.deleted })
+            : msg.error ?? t("clear.failed")}
       </span>
     </span>
   );

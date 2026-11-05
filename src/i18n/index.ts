@@ -1,9 +1,5 @@
-import { createInstance } from "i18next";
+import { createInstance, type Resource } from "i18next";
 import { initReactI18next } from "react-i18next";
-import enSettings from "../locales/en/settings.json";
-import zhSettings from "../locales/zh-CN/settings.json";
-import enLanguage from "../locales/en/language.json";
-import zhLanguage from "../locales/zh-CN/language.json";
 
 export type Locale = "en" | "zh-CN";
 export const LOCALE_STORAGE_KEY = "sparkdash-locale";
@@ -24,20 +20,27 @@ export function detectLocale(): Locale {
   return normalizeLocale(typeof navigator === "undefined" ? null : navigator.language) ?? "en";
 }
 
-// One bundled loader for this small foundation. English catalogs are the source
-// of truth; subsequent pages add namespaces rather than parallel loaders.
+// Every src/locales/<language>/<namespace>.json file is bundled. Adding a page
+// namespace is adding its two JSON files; English catalogs are the source of truth.
+const catalogFiles = import.meta.glob<{ default: Record<string, unknown> }>("../locales/*/*.json", { eager: true });
+const resources: Resource = {};
+for (const [file, module] of Object.entries(catalogFiles)) {
+  const match = /\/locales\/([^/]+)\/([^/]+)\.json$/.exec(file);
+  if (!match) continue;
+  const [, language, namespace] = match;
+  (resources[language] ??= {})[namespace] = module.default;
+}
+const namespaces = Object.keys(resources.en ?? {});
+
 export const i18n = createInstance();
 void i18n.use(initReactI18next).init({
-  resources: {
-    en: { settings: enSettings, language: enLanguage },
-    "zh-CN": { settings: zhSettings, language: zhLanguage },
-  },
+  resources,
   lng: detectLocale(),
   fallbackLng: "en",
   supportedLngs: ["en", "zh-CN"],
   load: "currentOnly",
   defaultNS: "settings",
-  ns: ["settings", "language"],
+  ns: namespaces,
   interpolation: { escapeValue: false },
   returnEmptyString: false,
   initAsync: false,

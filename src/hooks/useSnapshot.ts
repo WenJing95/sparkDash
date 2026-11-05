@@ -16,6 +16,10 @@ function wsUrl(): string {
  * useSnapshot — connects to the WebSocket and exposes live spark data.
  * Returns { sparks, activeId, setActiveId, activeSpark, connected }.
  */
+/** Local snapshot errors; ConnectionBanner shows them in the UI language. */
+export const SNAPSHOT_INVALID_PAYLOAD = "The server sent an invalid telemetry payload.";
+export const SNAPSHOT_MALFORMED = "The server sent malformed telemetry data.";
+
 export function useSnapshot() {
   const [sparks, setSparks] = useState<SparkSnapshot[]>([]);
   const [connected, setConnected] = useState(false);
@@ -90,10 +94,10 @@ export function useSnapshot() {
           setServerAlerts(Array.isArray(msg.alerts?.active) ? msg.alerts.active : null);
           setSnapshotError(null);
         } else {
-          setSnapshotError("The server sent an invalid telemetry payload.");
+          setSnapshotError(SNAPSHOT_INVALID_PAYLOAD);
         }
       } catch {
-        setSnapshotError("The server sent malformed telemetry data.");
+        setSnapshotError(SNAPSHOT_MALFORMED);
       }
     };
 

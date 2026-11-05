@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SparkConfig } from "../api/types";
 
 /** Short noun for a unit kind, matching the "Spark/GPU Host" wording used elsewhere. */
@@ -35,4 +36,30 @@ export function addDeviceLabel(kind: SparkConfig["kind"]): string {
 /** Title for the Edit dialog. */
 export function editDeviceTitle(kind: SparkConfig["kind"]): string {
   return `Edit ${deviceKindNoun(kind)}`;
+}
+
+// ─── UI-language versions (the functions above stay English for existing callers and tests) ───
+
+/** deviceKindNoun in the UI language. */
+export function deviceKindNounText(t: TFunction<"common">, kind: SparkConfig["kind"]): string {
+  return kind === "host" ? t("device.host") : t("device.spark");
+}
+
+/** UNIT_TYPE_OPTIONS with labels in the UI language. */
+export function unitTypeOptions(t: TFunction<"common">): { value: UnitType; label: string }[] {
+  return [
+    { value: "spark", label: t("device.unitSpark") },
+    { value: "host", label: t("device.unitHost") },
+    { value: "windows", label: t("device.unitWindows") },
+  ];
+}
+
+/** addDeviceLabel in the UI language. */
+export function addDeviceLabelText(t: TFunction<"common">, kind: SparkConfig["kind"]): string {
+  return kind === "host" ? t("device.addHost") : t("device.addSpark");
+}
+
+/** editDeviceTitle in the UI language. */
+export function editDeviceTitleText(t: TFunction<"common">, kind: SparkConfig["kind"]): string {
+  return kind === "host" ? t("device.editHost") : t("device.editSpark");
 }

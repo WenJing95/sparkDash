@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AlertInstance, SparkSnapshot } from "../../api/types";
+import { useTranslation } from "react-i18next";
 import { fleetExceptions } from "../../shared/fleetExceptions";
+import { fleetAlertText, fleetExceptionFacts, type FleetExceptionFacts } from "./fleetExceptionText";
 import { AlertTriangleIcon, ChevronRightIcon } from "../ui/icons";
 
 export type FleetAlert = {
@@ -13,6 +15,11 @@ export type FleetAlert = {
   severity: "critical" | "warning";
   /** Thermal / hardware throttle: safety-relevant, shown even with the full list off. */
   throttle?: boolean;
+  /**
+   * The condition as data, for wording it in the current language (see fleetAlertText).
+   * Absent on a server-only row (a Health finding), whose text stays the server's.
+   */
+  exception?: FleetExceptionFacts;
   /** When the server says the condition began (survives reloads); null = counted from first sight here. */
   startsAt: number | null;
 };
@@ -30,6 +37,7 @@ export function deriveAlerts(sparks: SparkSnapshot[], unit: "celsius" | "fahrenh
         ...(ex.detail ? { detail: ex.detail } : {}),
         severity: ex.severity,
         ...(ex.id === "throttle" ? { throttle: true } : {}),
+        exception: fleetExceptionFacts(ex.id, spark, unit),
         startsAt: null,
       });
     }
@@ -54,6 +62,7 @@ export function serverAlertRows(alerts: AlertInstance[], sparks: SparkSnapshot[]
       ...(here ? (here.detail ? { detail: here.detail } : {}) : a.summary && a.summary !== a.label ? { detail: a.summary } : {}),
       severity: a.severity,
       ...(a.ruleId === "throttle" ? { throttle: true } : {}),
+      ...(here?.exception ? { exception: here.exception } : {}),
       startsAt: a.startsAt,
     };
   });
@@ -98,6 +107,7 @@ export function FleetAlertStrip({
   alertsEnabled?: boolean;
   serverAlerts?: AlertInstance[] | null;
 }) {
+  const { t } = useTranslation("overview");
   const alerts = useMemo(
     () => stripAlerts({ sparks, alertsEnabled, serverAlerts, showExceptions, temperatureUnit }),
     [sparks, alertsEnabled, serverAlerts, showExceptions, temperatureUnit]
@@ -113,19 +123,20 @@ export function FleetAlertStrip({
   }, [alerts]);
   if (alerts.length === 0) return null;
   return (
-    <section className="ov-alerts" aria-label="Active fleet exceptions">
+    <section className="ov-alerts" aria-label={t("alerts.region")}>
       {alerts.map((alert) => {
         const since = alert.startsAt ?? firstSeen.current.get(alert.key) ?? now;
         const mins = Math.max(0, Math.floor((now - since) / 60_000));
+        const text = fleetAlertText(t, alert);
         return (
           <div key={alert.key} className={`alert-strip ov-alert ${alert.severity === "critical" ? "ov-alert--bad" : ""}`} role="status">
             <AlertTriangleIcon className="h-[18px] w-[18px] shrink-0" />
             <div className="ov-alert__text">
-              <b>{alert.unitName}</b> {alert.label}.
-              <small>{[alert.detail, `${mins}m active`].filter(Boolean).join(" · ")}</small>
+              <b>{alert.unitName}</b> {t("alerts.sentence", { label: text.label })}
+              <small>{[text.detail, t("alerts.active", { mins })].filter(Boolean).join(" · ")}</small>
             </div>
             <button type="button" className="btn btn--sm" onClick={() => onSelect?.(alert.unitId)}>
-              Open {alert.unitName}
+              {t("alerts.open", { name: alert.unitName })}
               <ChevronRightIcon className="h-3.5 w-3.5" />
             </button>
           </div>

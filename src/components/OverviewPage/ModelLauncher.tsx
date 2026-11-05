@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LauncherRunState, LlmLauncher, SparkSnapshot } from "../../api/types";
 import { runLauncher } from "../../api/client";
 import { fetchLaunchersCached, getCachedLaunchers, invalidateLaunchers, patchCachedStatus } from "../../hooks/launcherCache";
@@ -38,6 +39,7 @@ export function ModelLauncher({
   /** Below this much free memory, "Start anyway" asks a second time. */
   lowFreeMb?: number;
 }) {
+  const { t } = useTranslation("overview");
   const sparkId = spark.id;
   const initial = getCachedLaunchers(sparkId);
   const [launchers, setLaunchers] = useState<LlmLauncher[] | null>(initial?.launchers ?? null);
@@ -72,7 +74,7 @@ export function ModelLauncher({
   useEffect(() => {
     aliveRef.current = true;
     void refresh();
-    const t = window.setInterval(() => {
+    const timer = window.setInterval(() => {
       if (!document.hidden) void refresh();
     }, REFRESH_MS);
     const onVisible = () => {
@@ -81,7 +83,7 @@ export function ModelLauncher({
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       aliveRef.current = false;
-      window.clearInterval(t);
+      window.clearInterval(timer);
       window.clearTimeout(afterStartTimer.current);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -117,8 +119,8 @@ export function ModelLauncher({
     // not presented as having nothing on it. No cause is claimed for the activity.
     body = (
       <div className="ov-launch__hint">
-        {failed ? "Models unavailable" : "Looking for models…"}
-        {failed && busy ? ` · ${busy}.` : ""}
+        {failed ? t("launcher.unavailable") : t("launcher.looking")}
+        {failed && busy ? ` · ${t("launcher.busySentence", { busy })}` : ""}
       </div>
     );
   } else if (loading) {
@@ -126,12 +128,12 @@ export function ModelLauncher({
       <>
         <div className="ov-launch__title">
           <span className="ov-launch__spin" aria-hidden />
-          Loading {loading.name}…
+          {t("launcher.loadingName", { name: loading.name })}
         </div>
-        <div className="ov-launch__hint">The start script is running; the model appears here once it serves.</div>
+        <div className="ov-launch__hint">{t("launcher.scriptRunning")}</div>
         {onOpen ? (
           <button type="button" className="btn btn--sm" onClick={() => onOpen(sparkId)}>
-            View output
+            {t("launcher.viewOutput")}
           </button>
         ) : null}
       </>
@@ -141,23 +143,23 @@ export function ModelLauncher({
       <>
         <div className="ov-launch__title">
           {busyHolders ? null : <span className="ov-launch__spin" aria-hidden />}
-          {busyHolders ? "GPU is in use" : "Something is loading"}
+          {busyHolders ? t("launcher.gpuInUse") : t("launcher.somethingLoading")}
         </div>
         <div className="ov-launch__hint">
-          {busy}.{" "}
+          {t("launcher.busySentence", { busy })}{" "}
           {busyHolders
-            ? "If this is an LLM server, add its port under + Add LLM port on the Spark page to monitor it."
-            : "Starting another model now could run out of memory."}
+            ? t("launcher.addPortHint")
+            : t("launcher.oomRisk")}
         </div>
         {confirmLow ? (
           <div className="ov-launch__err" role="alert">
-            Only {formatMb(freeMb ?? 0)} of memory is free. Starting a model now will probably run out of memory.
+            {t("launcher.lowMemory", { free: formatMb(freeMb ?? 0) })}
           </div>
         ) : null}
         <div className="ov-launch__more">
           {onOpen ? (
             <button type="button" className="btn btn--sm" onClick={() => onOpen(sparkId)}>
-              Open Spark
+              {t("launcher.openSpark")}
             </button>
           ) : null}
           <button
@@ -168,7 +170,7 @@ export function ModelLauncher({
               else setOverride(true);
             }}
           >
-            {confirmLow ? "Yes, start anyway" : "Start anyway…"}
+            {confirmLow ? t("launcher.confirmStart") : t("launcher.startAnyway")}
           </button>
         </div>
       </>
@@ -176,19 +178,19 @@ export function ModelLauncher({
   } else if (launchers.length === 0) {
     body = (
       <>
-        <div className="ov-launch__title">No model loaded</div>
-        <div className="ov-launch__hint">Add a model folder (start.sh / stop.sh) to start it from here.</div>
+        <div className="ov-launch__title">{t("launcher.noModel")}</div>
+        <div className="ov-launch__hint">{t("launcher.addFolderHint")}</div>
         <button type="button" className="btn btn--sm btn--primary" onClick={() => setAdding(true)}>
           <PlusIcon className="h-3.5 w-3.5" />
-          Add a model
+          {t("launcher.addFirst")}
         </button>
       </>
     );
   } else {
     body = (
       <>
-        <div className="ov-launch__title">{busy ? "GPU is busy · start anyway?" : "No model loaded · start one"}</div>
-        {busy ? <div className="ov-launch__hint">{busy}.</div> : null}
+        <div className="ov-launch__title">{busy ? t("launcher.busyStart") : t("launcher.noModelStart")}</div>
+        {busy ? <div className="ov-launch__hint">{t("launcher.busySentence", { busy })}</div> : null}
         <ul className="ov-launch__list">
           {shown.map((l) => (
             <li key={l.id}>
@@ -200,7 +202,7 @@ export function ModelLauncher({
                 disabled={starting != null}
                 onClick={() => void start(l)}
               >
-                {starting === l.id ? "Starting…" : "Start"}
+                {starting === l.id ? t("launcher.starting") : t("launcher.start")}
               </button>
             </li>
           ))}
@@ -208,12 +210,12 @@ export function ModelLauncher({
         <div className="ov-launch__more">
           {more > 0 && onOpen ? (
             <button type="button" className="btn btn--sm btn--ghost" onClick={() => onOpen(sparkId)}>
-              +{more} more
+              {t("launcher.more", { n: more })}
             </button>
           ) : null}
           <button type="button" className="btn btn--sm btn--ghost" onClick={() => setAdding(true)}>
             <PlusIcon className="h-3.5 w-3.5" />
-            Add model
+            {t("launcher.addModel")}
           </button>
         </div>
       </>

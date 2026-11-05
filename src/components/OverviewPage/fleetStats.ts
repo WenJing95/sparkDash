@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { SparkSnapshot } from "../../api/types";
 
 export interface FleetTotals {
@@ -53,22 +54,65 @@ export function trendDeltaPct(series: readonly number[], minSamples = 8): number
   return ((avg(tail) - base) / base) * 100;
 }
 
+/** One piece of work a fleet shutdown would interrupt, as data (word it with formatShutdownWarning). */
+export type ShutdownWork =
+  | { name: string; kind: "llm"; count: number }
+  | { name: string; kind: "comfy" }
+  | { name: string; kind: "hermes" };
+
 /** Work that a fleet shutdown would interrupt, from signals already in the snapshot. */
-export function shutdownWarnings(sparks: readonly SparkSnapshot[]): string[] {
-  const out: string[] = [];
+export function shutdownWork(sparks: readonly SparkSnapshot[]): ShutdownWork[] {
+  const out: ShutdownWork[] = [];
   for (const s of sparks) {
     if (!s.online) continue;
     const llmBusy = Array.isArray(s.metrics?.llm)
       ? s.metrics.llm.reduce((n, l) => n + Math.max(l.slotsActive || 0, l.requestsRunning || 0), 0)
       : 0;
-    if (llmBusy > 0) out.push(`${s.name}: ${llmBusy} in-flight LLM request${llmBusy === 1 ? "" : "s"}`);
-    if ((s.metrics?.comfy?.queueRunning ?? 0) > 0) out.push(`${s.name}: ComfyUI job running`);
-    if (s.hermes?.status === "running") out.push(`${s.name}: Hermes update in progress`);
+    if (llmBusy > 0) out.push({ name: s.name, kind: "llm", count: llmBusy });
+    if ((s.metrics?.comfy?.queueRunning ?? 0) > 0) out.push({ name: s.name, kind: "comfy" });
+    if (s.hermes?.status === "running") out.push({ name: s.name, kind: "hermes" });
   }
   return out;
 }
 
-export function formatCtx(n: number | null | undefined): string | null {
+/** One shutdown warning line in the current language. */
+export function formatShutdownWarning(t: TFunction<"overview">, w: ShutdownWork): string {
+  switch (w.kind) {
+    case "llm":
+      return t("shutdown.llm", { name: w.name, count: w.count });
+    case "comfy":
+      return t("shutdown.comfy", { name: w.name });
+    case "hermes":
+      return t("shutdown.hermes", { name: w.name });
+  }
+}
+
+/** Shutdown warning lines in the current language. */
+export function shutdownWarningsText(t: TFunction<"overview">, sparks: readonly SparkSnapshot[]): string[] {
+  return shutdownWork(sparks).map((w) => formatShutdownWarning(t, w));
+}
+
+/**
+ * English shutdown warning lines, kept for callers not yet passing t (ShutdownAll).
+ * Prefer shutdownWarningsText(t, sparks).
+ */
+export function shutdownWarnings(sparks: readonly SparkSnapshot[]): string[] {
+  return shutdownWork(sparks).map((w) =>
+    w.kind === "llm"
+      ? `${w.name}: ${w.count} in-flight LLM request${w.count === 1 ? "" : "s"}`
+      : w.kind === "comfy"
+        ? `${w.name}: ComfyUI job running`
+        : `${w.name}: Hermes update in progress`
+  );
+}
+
+/** Context length in compact form ("32k", "512"), without the "ctx" word. */
+export function ctxSize(n: number | null | undefined): string | null {
   if (!n || n <= 0) return null;
-  return n >= 1000 ? `${Math.round(n / 1024)}k ctx` : `${n} ctx`;
+  return n >= 1000 ? `${Math.round(n / 1024)}k` : `${n}`;
+}
+
+export function formatCtx(n: number | null | undefined): string | null {
+  const size = ctxSize(n);
+  return size == null ? null : `${size} ctx`;
 }

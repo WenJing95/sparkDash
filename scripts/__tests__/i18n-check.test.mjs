@@ -85,3 +85,57 @@ test("accepts i18next v4 _one and _other plural forms", () => {
   });
   assert.deepEqual(errors, []);
 });
+
+test("binds helper parameters typed TFunction<namespace>", () => {
+  const usages = scanTranslationSource('import type { TFunction } from "i18next"; export function label(t: TFunction<"overview">, n: number) { return t("cards.title", { n }); }', "helper.ts");
+  assert.deepEqual(usages, [{ file: "helper.ts", namespace: "overview", key: "cards.title" }]);
+  const arrow = scanTranslationSource('const f = (tr: TFunction<"common">) => tr("ok");', "arrow.ts");
+  assert.deepEqual(arrow, [{ file: "arrow.ts", namespace: "common", key: "ok" }]);
+});
+
+test("rejects TFunction parameters that do not name a namespace", () => {
+  assert.throws(() => scanTranslationSource('function f(t: TFunction) { return t("x"); }', "Bad.ts"), /must name its namespace/);
+});
+
+test("reports English messages that have no translation", () => {
+  const errors = validateCatalogs({
+    catalogs: catalogs({ en: { title: "Title", unused: "Unused" }, zhCN: { title: "标题" } }),
+    usages: [],
+  });
+  assert.match(errors.join("\n"), /zh-CN\/settings: missing target key unused/);
+});
+
+test("reports a target language without a catalog for an English namespace", () => {
+  const errors = validateCatalogs({
+    catalogs: { en: { settings: flattenCatalog({ a: "A" }) }, "zh-CN": {} },
+    usages: [],
+  });
+  assert.match(errors.join("\n"), /missing catalog for en\/settings\.json/);
+});
+
+test("checks <Trans> keys in the namespace of the t it is given", () => {
+  const source = 'import { Trans, useTranslation } from "react-i18next"; function A() { const { t } = useTranslation("settings"); return <Trans t={t} i18nKey="note.body" components={{ b: <b /> }} />; }';
+  const usages = scanTranslationSource(source, "Note.tsx");
+  assert.deepEqual(usages, [{ file: "Note.tsx", namespace: "settings", key: "note.body" }]);
+  const errors = validateCatalogs({ catalogs: catalogs({ en: {}, zhCN: {} }), usages });
+  assert.match(errors.join("\n"), /missing en\/settings key note\.body/);
+});
+
+test("checks a renamed <Trans> and one that names its namespace with ns", () => {
+  const renamed = 'import { Trans as T, useTranslation } from "react-i18next"; function A() { const { t: tc } = useTranslation("language"); return <T t={tc} i18nKey={"current"} />; }';
+  assert.deepEqual(scanTranslationSource(renamed, "A.tsx"), [{ file: "A.tsx", namespace: "language", key: "current" }]);
+  const withNs = 'import { Trans } from "react-i18next"; const x = <Trans ns="settings" i18nKey="a.b" />;';
+  assert.deepEqual(scanTranslationSource(withNs, "B.tsx"), [{ file: "B.tsx", namespace: "settings", key: "a.b" }]);
+});
+
+test("rejects <Trans> with a dynamic key or no known namespace", () => {
+  const head = 'import { Trans, useTranslation } from "react-i18next"; ';
+  assert.throws(() => scanTranslationSource(`${head}function A() { const { t } = useTranslation("settings"); return <Trans t={t} i18nKey={key} />; }`, "Bad.tsx"), /static string i18nKey/);
+  assert.throws(() => scanTranslationSource(`${head}const x = <Trans i18nKey="a" />;`, "Bad.tsx"), /needs a t=\{t\} or ns=/);
+  assert.throws(() => scanTranslationSource(`${head}const x = <Trans t={other} i18nKey="a" />;`, "Bad.tsx"), /translation binding/);
+  assert.throws(() => scanTranslationSource(`${head}const x = <Trans ns={name} i18nKey="a" />;`, "Bad.tsx"), /ns must be a static string/);
+});
+
+test("ignores a component named Trans that is not from react-i18next", () => {
+  assert.deepEqual(scanTranslationSource('import { Trans } from "./mine"; const x = <Trans i18nKey={key} />;', "Mine.tsx"), []);
+});

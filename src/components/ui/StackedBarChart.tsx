@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { labelIndexes, niceScale } from "./chartScale";
 import { useElementWidth } from "./useElementWidth";
 import "../../styles/charts.css";
@@ -50,9 +51,10 @@ export function StackedBarChart({
   format,
   unit,
   footer,
-  empty = "No data in this range yet.",
+  empty,
   ariaLabel,
 }: StackedBarChartProps) {
+  const { t } = useTranslation("common");
   const [ref, width] = useElementWidth();
   const [hover, setHover] = useState<number | null>(null);
 
@@ -75,11 +77,11 @@ export function StackedBarChart({
   return (
     <div className="chart" ref={ref}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel} onMouseLeave={() => setHover(null)}>
-        {scale.ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD.l} x2={width - PAD.r} y1={y(t)} y2={y(t)} className={t === 0 ? "chart__axis" : "chart__grid"} />
-            <text x={PAD.l - 6} y={y(t) + 3.5} textAnchor="end" className="chart__tick">
-              {format(t)}
+        {scale.ticks.map((tick) => (
+          <g key={tick}>
+            <line x1={PAD.l} x2={width - PAD.r} y1={y(tick)} y2={y(tick)} className={tick === 0 ? "chart__axis" : "chart__grid"} />
+            <text x={PAD.l - 6} y={y(tick) + 3.5} textAnchor="end" className="chart__tick">
+              {format(tick)}
             </text>
           </g>
         ))}
@@ -119,7 +121,7 @@ export function StackedBarChart({
           );
         })}
       </svg>
-      {!hasData ? <p className="chart__empty">{empty}</p> : null}
+      {!hasData ? <p className="chart__empty">{empty ?? t("chart.emptyRange")}</p> : null}
       {hovered && hover != null ? (
         <div
           className="chart__tip"
@@ -137,7 +139,7 @@ export function StackedBarChart({
               </span>
             ))}
           <span className="chart__tip-total">
-            Total <em>{format(totals[hover])}{unit ? ` ${unit}` : ""}</em>
+            {t("chart.total")} <em>{format(totals[hover])}{unit ? ` ${unit}` : ""}</em>
           </span>
           {footer ? <span className="chart__tip-foot">{footer(hovered)}</span> : null}
         </div>

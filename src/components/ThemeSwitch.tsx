@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { SunIcon, SunDimIcon, MoonIcon, MoonStarIcon } from "./ui/icons";
 
 type Theme = "white" | "light" | "dark" | "oled";
@@ -18,7 +20,21 @@ function getInitialTheme(): Theme {
   return "dark";
 }
 
+function themeName(t: TFunction<"common">, theme: Theme): string {
+  switch (theme) {
+    case "white":
+      return t("theme.white");
+    case "light":
+      return t("theme.light");
+    case "dark":
+      return t("theme.dark");
+    default:
+      return t("theme.oled");
+  }
+}
+
 export function ThemeSwitch() {
+  const { t } = useTranslation("common");
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme());
 
   useEffect(() => {
@@ -33,15 +49,15 @@ export function ThemeSwitch() {
   }, [theme]);
 
   const toggle = () =>
-    setTheme((t) => {
-      const idx = THEME_CYCLE.indexOf(t);
+    setTheme((current) => {
+      const idx = THEME_CYCLE.indexOf(current);
       return THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
     });
 
   // The command palette asks for a theme change through a window event.
   useEffect(() => {
     const onCycle = () =>
-      setTheme((t) => THEME_CYCLE[(THEME_CYCLE.indexOf(t) + 1) % THEME_CYCLE.length]);
+      setTheme((current) => THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length]);
     // The Settings theme picker announces an explicit choice the same way.
     const onSet = (e: Event) => {
       const next = (e as CustomEvent<Theme>).detail;
@@ -75,8 +91,8 @@ export function ThemeSwitch() {
       type="button"
       onClick={toggle}
       className="icon-circle"
-      title={`Theme: ${theme}`}
-      aria-label={`Switch theme (currently ${theme})`}
+      title={t("theme.title", { name: themeName(t, theme) })}
+      aria-label={t("theme.switchAria", { name: themeName(t, theme) })}
     >
       <Icon className="h-3.5 w-3.5" />
     </button>

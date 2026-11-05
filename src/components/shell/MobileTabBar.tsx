@@ -1,13 +1,14 @@
 import { BenchIcon } from "../bench/BenchIcon";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useInertBackground } from "../../hooks/useInertBackground";
 import type { SparkSnapshot } from "../../api/types";
 import { ACTIVITY_ID, COST_ID, ENERGY_ID, OVERVIEW_ID, SHOWCASE_ID, TEMPS_ID, TOKENS_ID, benchId, benchTypeOf, isPageId } from "../../constants";
-import { BENCH_TYPES } from "../bench/benchCatalog";
+import { BENCH_TYPES, benchLabel } from "../bench/benchCatalog";
 import { BoltIcon, ChartIcon, CoinsIcon, GearIcon, GridIcon, ListIcon, PlusIcon, ServerIcon, TerminalIcon, ThermometerIcon, TokensIcon } from "../ui/icons";
-import { isThrottling, railSubLabel } from "./sparkSummary";
+import { isThrottling, railSubLabelText } from "./sparkSummary";
 import { ShutdownAll } from "../ShutdownAll";
 
 /** Keep in sync with the sheet-out animation in shell.css. */
@@ -23,6 +24,8 @@ interface MobileTabBarProps {
 
 /** Floating bottom tab bar for narrow screens (the fleet rail is hidden there). */
 export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings }: MobileTabBarProps) {
+  const { t } = useTranslation("shell");
+  const { t: tb } = useTranslation("benchPages");
   const [sheetKind, setSheetKind] = useState<"sparks" | "stats" | null>(null);
   const sheet = sheetKind != null;
   // Closing plays a slide-down first; the sheet unmounts when it has finished.
@@ -79,14 +82,14 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
   );
   return (
     <>
-      <nav className="tabbar" aria-label="Primary" data-tab={tabIndex}>
+      <nav className="tabbar" aria-label={t("mobile.navAria")} data-tab={tabIndex}>
         <button type="button" className={tabIndex === 0 ? "is-active" : ""} aria-current={activeId === OVERVIEW_ID ? "page" : undefined} onClick={() => onSelect(OVERVIEW_ID)}>
           <GridIcon className="h-[18px] w-[18px]" />
-          Overview
+          {t("pages.overview")}
         </button>
         <button type="button" className={tabIndex === 1 ? "is-active" : ""} aria-current={onSpark ? "page" : undefined} onClick={() => setSheet(true)} aria-haspopup="dialog">
           <ServerIcon className="h-[18px] w-[18px]" />
-          Sparks
+          {t("mobile.sparks")}
         </button>
         <button
           type="button"
@@ -96,11 +99,11 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
           aria-haspopup="dialog"
         >
           <ChartIcon className="h-[18px] w-[18px]" />
-          Stats
+          {t("mobile.stats")}
         </button>
         <button type="button" onClick={onOpenSettings}>
           <GearIcon className="h-[18px] w-[18px]" />
-          Settings
+          {t("pages.settings")}
         </button>
       </nav>
       {sheet
@@ -111,20 +114,20 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
                 if (e.target === e.currentTarget) setSheet(false);
               }}
             >
-              <div ref={trapRef} className={`sheet ${leaving ? "is-leaving" : ""}`} role="dialog" aria-modal="true" aria-label={sheetKind === "stats" ? "Stats" : "Choose a Spark"}>
+              <div ref={trapRef} className={`sheet ${leaving ? "is-leaving" : ""}`} role="dialog" aria-modal="true" aria-label={sheetKind === "stats" ? t("mobile.stats") : t("mobile.chooseSpark")}>
                 <div className="rail-list">
                   {sheetKind === "stats" ? (
                     ([
-                      [TOKENS_ID, "Token totals", <TokensIcon key="t" className="h-4 w-4" />],
-                      [COST_ID, "Cost compare", <CoinsIcon key="c" className="h-4 w-4" />],
-                      [ENERGY_ID, "Fleet energy", <BoltIcon key="e" className="h-4 w-4" />],
-                      [TEMPS_ID, "Temps", <ThermometerIcon key="tp" className="h-4 w-4" />],
-                      [ACTIVITY_ID, "Activity", <ListIcon key="a" className="h-4 w-4" />],
+                      [TOKENS_ID, t("pages.tokens"), <TokensIcon key="t" className="h-4 w-4" />],
+                      [COST_ID, t("pages.cost"), <CoinsIcon key="c" className="h-4 w-4" />],
+                      [ENERGY_ID, t("pages.energy"), <BoltIcon key="e" className="h-4 w-4" />],
+                      [TEMPS_ID, t("pages.temps"), <ThermometerIcon key="tp" className="h-4 w-4" />],
+                      [ACTIVITY_ID, t("pages.activity"), <ListIcon key="a" className="h-4 w-4" />],
                     ] as const).map(([id, label, icon]) => pageButton(id, label, icon))
                   ) : (
                     <>
                   <div className="rail-label rail-label--spaced">
-                    <span>Benchmarks</span>
+                    <span>{t("pages.benchmarks")}</span>
                   </div>
                   {BENCH_TYPES.map((b) => (
                     <Fragment key={b.id}>
@@ -137,15 +140,15 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
                         }}
                       >
                         <BenchIcon id={b.id} className="h-3.5 w-3.5" />
-                        <span className="rail-item__name">{b.label}</span>
+                        <span className="rail-item__name">{benchLabel(tb, b)}</span>
                       </button>
                       {b.id === "prefill"
-                        ? pageButton(SHOWCASE_ID, "Showcase", <TerminalIcon className="h-3.5 w-3.5" />, true)
+                        ? pageButton(SHOWCASE_ID, t("pages.showcase"), <TerminalIcon className="h-3.5 w-3.5" />, true)
                         : null}
                     </Fragment>
                   ))}
                   <div className="rail-label rail-label--spaced">
-                    <span>Sparks</span>
+                    <span>{t("mobile.sparks")}</span>
                   </div>
                   {sparks.map((s) => (
                     <button
@@ -159,7 +162,7 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
                     >
                       <i className={`sdot ${!s.online ? "sdot--off" : isThrottling(s) ? "sdot--warn" : ""}`} aria-hidden />
                       <span className="rail-item__name">{s.name}</span>
-                      <span className="rail-item__sub">{railSubLabel(s)}</span>
+                      <span className="rail-item__sub">{railSubLabelText(t, s)}</span>
                     </button>
                   ))}
                   <button
@@ -171,10 +174,10 @@ export function MobileTabBar({ sparks, activeId, onSelect, onAdd, onOpenSettings
                     }}
                   >
                     <PlusIcon className="h-4 w-4" />
-                    <span className="rail-item__name">Add Spark / GPU host</span>
+                    <span className="rail-item__name">{t("mobile.add")}</span>
                   </button>
                   <div className="rail-label rail-label--spaced">
-                    <span>Fleet</span>
+                    <span>{t("mobile.fleet")}</span>
                   </div>
                   <div className="sheet-power">
                     <ShutdownAll sparks={sparks} className="sheet-power__btn" />

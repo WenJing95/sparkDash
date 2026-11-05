@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { formatSince } from "./formatSince";
 
 interface LlmRates {
@@ -27,4 +28,10 @@ export function isLlmIdle(llm: LlmRates): boolean {
 export function idleLabel(lastActiveAt: number | null | undefined, now: number = Date.now()): string {
   const since = formatSince(lastActiveAt, now);
   return since ? `Idle · last served ${since} ago` : "Idle";
+}
+
+/** idleLabel in the UI language; the compact age ("12m") is unchanged. */
+export function idleLabelText(t: TFunction<"common">, lastActiveAt: number | null | undefined, now: number = Date.now()): string {
+  const since = formatSince(lastActiveAt, now);
+  return since ? t("llm.idleSince", { since }) : t("llm.idle");
 }
