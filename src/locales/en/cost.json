@@ -1,0 +1,79 @@
+{
+  "title": "Cost compare",
+  "subtitle": "What your fleet’s token usage would have cost on a hosted API, priced from the community price list.",
+  "errors": {
+    "usageFallback": "Could not load usage history",
+    "pricesFallback": "Could not load the price catalog",
+    "stale": "Showing the last loaded data. Refresh failed: {{error}}",
+    "load": "Could not load usage history: {{error}}"
+  },
+  "retry": "Retry",
+  "series": { "input": "Input (prompt)", "output": "Output (generated)" },
+  "pricedAs": "Priced as",
+  "chooseHint": "Choose a hosted model to price your usage against.",
+  "priceLine": "{{input}} / 1M in · {{output}} / 1M out",
+  "contextSize": "{{k}}k context",
+  "chart": {
+    "titleHour": "Cost per hour",
+    "titleDay": "Cost per day",
+    "sub": "{{period}} at {{model}} list prices",
+    "subLifetime": "{{period}} at {{model}} list prices; the chart shows the retained daily buckets",
+    "rangeAria": "Time range",
+    "unit": "spent",
+    "empty": "No token traffic in this range yet, so there is nothing to price.",
+    "ariaHour": "Stacked bar chart of the cost of tokens per hour as {{model}}",
+    "ariaDay": "Stacked bar chart of the cost of tokens per day as {{model}}"
+  },
+  "about": {
+    "title": "How this is priced",
+    "rates": "Computed prefill is charged the input rate ({{input}} / 1M); generated tokens the output rate ({{output}} / 1M).",
+    "cacheRate": "Cached prefill is charged the provider's cache-read rate ({{rate}} / 1M) — your prefix cache saves {{savings}} in {{period}}.",
+    "noCacheRate": "The provider publishes no cache-read rate, so cached prefill is charged the full input rate.",
+    "sourceBefore": "Prices come from the community-maintained ",
+    "sourceLink": "litellm catalog",
+    "refreshedDaily": ", refreshed daily",
+    "lastFetched": " (last fetched {{date}})",
+    "staleNote": " — the refresh failed, so these may be out of date",
+    "sourceEnd": ".",
+    "counters": "Tokens are the same counters as the Token totals page: fleet-wide, every port and model."
+  },
+  "pricesError": "The price catalog could not be loaded.",
+  "noPrices": {
+    "title": "No price data yet.",
+    "body": " Enable MODEL_PRICES_FETCH or supply a catalog at MODEL_PRICES_JSON_PATH, then retry."
+  },
+  "chooseToCompare": "Choose a hosted model to compare costs.",
+  "loadingPrices": "Loading prices…",
+  "loading": "Loading…",
+  "tiles": {
+    "aria": "Cost summary for {{period}}",
+    "total": "Total cost",
+    "totalSub": "for {{period}}",
+    "inputSubUnknown": "{{prompt}} prompt tokens, all priced as computed — this engine reports no cached share",
+    "inputSub": "{{prompt}} prompt tokens, {{cached}} of them cached",
+    "outputSub": "{{tokens}} tokens · {{pct}}% of the bill",
+    "savings": "Cache savings",
+    "savingsSub": "vs the full input price for cached prefill",
+    "savingsUnknown": "this engine does not report cached prompt tokens",
+    "savingsNoDiscount": "no cache discount published",
+    "avgHour": "Average per hour",
+    "avgDay": "Average per day",
+    "perHour": "/ hour",
+    "perDay": "/ day",
+    "acrossHours_one": "Across {{count}} hour",
+    "acrossHours_other": "Across {{count}} hours",
+    "acrossDays_one": "Across {{count}} day",
+    "acrossDays_other": "Across {{count}} days",
+    "acrossDaysTracked_one": "Across {{count}} day tracked",
+    "acrossDaysTracked_other": "Across {{count}} days tracked",
+    "blended": "Blended rate",
+    "blendedSub": "{{tokens}} tokens priced"
+  },
+  "picker": {
+    "choose": "Choose a hosted model…",
+    "catalogAria": "Model price catalog",
+    "searchPlaceholder": "Search {{n}} models…",
+    "searchAria": "Search models",
+    "noMatch": "No models match “{{query}}”."
+  }
+}

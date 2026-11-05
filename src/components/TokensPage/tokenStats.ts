@@ -7,7 +7,9 @@
  * served subset of prompt, unreported = prompt whose split the engine never measured,
  * computed = prompt - cached - unreported. total = generated + prompt.
  */
+import type { TFunction } from "i18next";
 import { addTokens, formatTokensCompact } from "../../shared/tokenFormat";
+import { i18n } from "../../i18n";
 import { tzOffsetMinutes } from "../../shared/timeZone";
 import type { TokenHistory, TokenHistoryRow } from "../../api/types";
 import type { LlmTokenSeriesTotals } from "../../api/llmTokenTypes";
@@ -21,21 +23,82 @@ export type Entry = Omit<TokenHistoryRow, "t">;
 
 export interface RangeSpec {
   key: RangeKey;
-  label: string;
-  /** Used in sentences: "in the last 7 days". */
-  phrase: string;
   unit: BucketUnit;
   /** Bucket count; null = everything retained. */
   count: number | null;
 }
 
 export const RANGES: readonly RangeSpec[] = [
-  { key: "24h", label: "Last 24 h", phrase: "the last 24 hours", unit: "hour", count: 24 },
-  { key: "7d", label: "7 d", phrase: "the last 7 days", unit: "day", count: 7 },
-  { key: "14d", label: "14 d", phrase: "the last 14 days", unit: "day", count: 14 },
-  { key: "30d", label: "30 d", phrase: "the last 30 days", unit: "day", count: 30 },
-  { key: "all", label: "All time", phrase: "all time", unit: "day", count: null },
+  { key: "24h", unit: "hour", count: 24 },
+  { key: "7d", unit: "day", count: 7 },
+  { key: "14d", unit: "day", count: 14 },
+  { key: "30d", unit: "day", count: 30 },
+  { key: "all", unit: "day", count: null },
 ];
+
+/**
+ * English wording for helpers called without a translator (tests, CSV-free callers).
+ * Components always pass the `t` from useTranslation("tokens") so text follows the UI language.
+ */
+const englishT: TFunction<"tokens"> = i18n.getFixedT("en", "tokens");
+
+/** True when dates keep the built-in English layout ("Wed 7 Oct"); other languages use Intl. */
+export function isEnglishLocale(locale?: string): boolean {
+  return !locale || locale === "en" || locale.startsWith("en-");
+}
+
+/** Format the UTC fields of `d` in `locale` (callers pass a Date already shifted to wall-clock time). */
+export function formatUtcFields(d: Date, locale: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(d);
+}
+
+/** Segment button text: "Last 24 h", "7 d", "All time". */
+export function rangeLabel(key: RangeKey, t: TFunction<"tokens"> = englishT): string {
+  switch (key) {
+    case "24h":
+      return t("range.label.24h");
+    case "7d":
+      return t("range.label.7d");
+    case "14d":
+      return t("range.label.14d");
+    case "30d":
+      return t("range.label.30d");
+    default:
+      return t("range.label.all");
+  }
+}
+
+/** Used in sentences: "in the last 7 days", "in all time". */
+export function rangePhrase(key: RangeKey, t: TFunction<"tokens"> = englishT): string {
+  switch (key) {
+    case "24h":
+      return t("range.phrase.24h");
+    case "7d":
+      return t("range.phrase.7d");
+    case "14d":
+      return t("range.phrase.14d");
+    case "30d":
+      return t("range.phrase.30d");
+    default:
+      return t("range.phrase.all");
+  }
+}
+
+/** The length alone, for "the previous 7 days" / "prev. 7 days". */
+export function rangeSpan(key: RangeKey, t: TFunction<"tokens"> = englishT): string {
+  switch (key) {
+    case "24h":
+      return t("range.span.24h");
+    case "7d":
+      return t("range.span.7d");
+    case "14d":
+      return t("range.span.14d");
+    case "30d":
+      return t("range.span.30d");
+    default:
+      return t("range.span.all");
+  }
+}
 
 export const OTHER_ID = "__other";
 const HOUR_MS = 3_600_000;
@@ -160,30 +223,42 @@ function tzOffset(ms: number, offsetMin?: number): number {
  * Short x-axis label. Days are UTC dates ("7 Oct"); hours are LOCAL clock hours ("14:00").
  * `offsetMin` (minutes east of UTC) overrides the browser's zone — used by tests.
  */
-export function bucketLabel(key: string, unit: BucketUnit, offsetMin?: number): string {
+export function bucketLabel(key: string, unit: BucketUnit, offsetMin?: number, locale?: string): string {
   const ms = parseKey(key);
   if (ms == null) return key;
   if (unit === "day") {
     const d = new Date(ms);
+    if (!isEnglishLocale(locale)) return formatUtcFields(d, locale!, { month: "short", day: "numeric" });
     return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
   }
   const d = new Date(ms + tzOffset(ms, offsetMin) * 60_000);
   return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 }
 
-/** Tooltip heading: "Wed 7 Oct 2026 (UTC)" or "Wed 7 Oct, 14:00–15:00 (local)". */
-export function bucketTitle(key: string, unit: BucketUnit, offsetMin?: number): string {
+/** The date part of a tooltip heading: "Wed 7 Oct 2026" or "Wed 7 Oct, 14:00–15:00"; null for a malformed key. */
+export function bucketDate(key: string, unit: BucketUnit, offsetMin?: number, locale?: string): string | null {
   const ms = parseKey(key);
-  if (ms == null) return key;
+  if (ms == null) return null;
+  const english = isEnglishLocale(locale);
   if (unit === "day") {
     const d = new Date(ms);
-    return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} (UTC)`;
+    if (!english) return formatUtcFields(d, locale!, { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+    return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
   }
   const off = tzOffset(ms, offsetMin);
   const d = new Date(ms + off * 60_000);
   // Hour buckets are UTC hours, so a half-hour zone (India, Nepal...) starts them at :30 or :45.
-  const clock = (t: Date) => `${String(t.getUTCHours()).padStart(2, "0")}:${String(t.getUTCMinutes()).padStart(2, "0")}`;
-  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${clock(d)}–${clock(new Date(d.getTime() + 3_600_000))} (local)`;
+  const clock = (c: Date) => `${String(c.getUTCHours()).padStart(2, "0")}:${String(c.getUTCMinutes()).padStart(2, "0")}`;
+  const span = `${clock(d)}–${clock(new Date(d.getTime() + 3_600_000))}`;
+  if (!english) return `${formatUtcFields(d, locale!, { weekday: "short", month: "short", day: "numeric" })} ${span}`;
+  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${span}`;
+}
+
+/** Tooltip heading: "Wed 7 Oct 2026 (UTC)" or "Wed 7 Oct, 14:00–15:00 (local)". */
+export function bucketTitle(key: string, unit: BucketUnit, offsetMin?: number, t: TFunction<"tokens"> = englishT, locale?: string): string {
+  const date = bucketDate(key, unit, offsetMin, locale);
+  if (date == null) return key;
+  return unit === "day" ? t("bucket.utc", { date }) : t("bucket.local", { date });
 }
 
 export interface RangeWindow {
@@ -350,19 +425,29 @@ export interface GroupedBuckets {
   buckets: { key: string; values: Record<string, number> }[];
 }
 
-export const TYPE_SERIES: readonly { id: string; label: string }[] = [
-  { id: "generated", label: "Generated" },
-  { id: "cached", label: "Cached prefill" },
-  { id: "computed", label: "Computed prefill" },
-  { id: "unreported", label: "Prompt, cache not reported" },
-];
+export const TYPE_SERIES_IDS = ["generated", "cached", "computed", "unreported"] as const;
+
+/** Legend name of a token type series. */
+export function typeSeriesLabel(id: string, t: TFunction<"tokens"> = englishT): string {
+  switch (id) {
+    case "generated":
+      return t("type.generated");
+    case "cached":
+      return t("type.cached");
+    case "computed":
+      return t("type.computed");
+    default:
+      return t("type.unreported");
+  }
+}
 
 /** One bucket-by-series matrix for the stacked chart; model / spark keep the top N, the rest fold into "Other". */
 export function groupBuckets(
   rows: readonly TokenHistoryRow[],
   keys: readonly string[],
   by: GroupBy,
-  opts: { topN?: number; sparkName?: (id: string) => string } = {}
+  opts: { topN?: number; sparkName?: (id: string) => string } = {},
+  t: TFunction<"tokens"> = englishT
 ): GroupedBuckets {
   const topN = opts.topN ?? 5;
   const name = opts.sparkName ?? ((id: string) => id);
@@ -383,7 +468,7 @@ export function groupBuckets(
       totals.unreported += t.unreported;
       return { key, values: { generated: t.generated, cached: t.cached, computed: t.computed, unreported: t.unreported } };
     });
-    return { series: TYPE_SERIES.map((s) => ({ ...s, total: totals[s.id] })), buckets };
+    return { series: TYPE_SERIES_IDS.map((id) => ({ id, label: typeSeriesLabel(id, t), total: totals[id] })), buckets };
   }
 
   const idOf = (r: TokenHistoryRow) => (by === "model" ? r.modelId : r.sparkId);
@@ -398,7 +483,7 @@ export function groupBuckets(
   const keep = new Set(top.map(([id]) => id));
   const series: GroupSeries[] = top.map(([id, total]) => ({ id, label: labelOf(id), total }));
   const otherTotal = ranked.slice(topN).reduce((s, [, v]) => s + v, 0);
-  if (otherTotal > 0) series.push({ id: OTHER_ID, label: "Other", total: otherTotal });
+  if (otherTotal > 0) series.push({ id: OTHER_ID, label: t("chart.other"), total: otherTotal });
 
   const buckets = keys.map((key) => {
     const values: Record<string, number> = {};
@@ -494,14 +579,14 @@ export function sortRows<T>(rows: readonly T[], get: (row: T) => number | string
 }
 
 /** "3 h ago", "2 d ago", "just now". */
-export function formatAgo(ms: number, nowMs: number): string {
+export function formatAgo(ms: number, nowMs: number, t: TFunction<"tokens"> = englishT): string {
   const s = Math.max(0, Math.round((nowMs - ms) / 1000));
-  if (s < 90) return "just now";
+  if (s < 90) return t("ago.justNow");
   const m = Math.round(s / 60);
-  if (m < 90) return `${m} min ago`;
+  if (m < 90) return t("ago.minutes", { n: m });
   const h = Math.round(m / 60);
-  if (h < 48) return `${h} h ago`;
-  return `${Math.round(h / 24)} d ago`;
+  if (h < 48) return t("ago.hours", { n: h });
+  return t("ago.days", { n: Math.round(h / 24) });
 }
 
 // ─── Insights ────────────────────────────────────────────
@@ -517,70 +602,85 @@ export interface InsightInput {
   firstKey: string | null;
   sparkName: (id: string) => string;
   tzOffsetMin?: number;
+  /** UI language for dates; English layout when omitted. */
+  locale?: string;
 }
 
 const compact = formatTokensCompact;
 
-/** 3-6 plain-English observations; each is only emitted when the data supports it. */
-export function buildInsights(i: InsightInput): string[] {
+/** 3-6 plain-language observations; each is only emitted when the data supports it. */
+export function buildInsights(i: InsightInput, t: TFunction<"tokens"> = englishT): string[] {
   const out: string[] = [];
   const s = i.summary;
   if (s.total <= 0) return out;
-  const unitWord = i.spec.unit === "hour" ? "hour" : "day";
-  const period = i.spec.phrase;
+  const hourly = i.spec.unit === "hour";
+  const all = i.spec.key === "all";
+  const period = all ? t("insights.retainedHistory") : rangePhrase(i.spec.key, t);
 
   if (s.busiest && s.activeBuckets >= 2) {
     const share = s.busiest.total / Math.max(1, i.totals.reduce((a, b) => a + b.total, 0));
-    out.push(`The busiest ${unitWord} was ${bucketTitle(s.busiest.key, i.spec.unit, i.tzOffsetMin).replace(/ \((UTC|local)\)$/, "")} with ${compact(s.busiest.total)} tokens, ${fmtPct(share)} of ${period === "all time" ? "the retained history" : period}.`);
+    const vars = {
+      when: bucketDate(s.busiest.key, i.spec.unit, i.tzOffsetMin, i.locale) ?? s.busiest.key,
+      tokens: compact(s.busiest.total),
+      share: fmtPct(share),
+      period,
+    };
+    out.push(hourly ? t("insights.busiestHour", vars) : t("insights.busiestDay", vars));
   }
 
   if (s.prompt > 0) {
     const rate = hitRate(s);
     if (rate == null && s.cacheReported !== false) {
-      out.push(`None of the ${compact(s.prompt)} prompt tokens was measured: they were read before the engine reported its prefix cache.`);
+      out.push(t("insights.noneMeasured", { prompt: compact(s.prompt) }));
     } else if (rate == null) {
-      out.push("This engine does not publish a prefix-cache counter, so the cache hit rate cannot be measured — only the per-response split knows it.");
+      out.push(t("insights.noCounter"));
     } else if (s.unreported > 0) {
-      out.push(`The prefix cache served ${fmtPct(rate)} of the ${compact(s.prompt - s.unreported)} prompt tokens it was measured on (${compact(s.unreported)} more were not reported).`);
+      out.push(t("insights.partlyMeasured", { rate: fmtPct(rate), measured: compact(s.prompt - s.unreported), unreported: compact(s.unreported) }));
     } else if (s.cached > 0) {
-      out.push(`The prefix cache served ${fmtPct(rate)} of prompt tokens, so about ${compact(s.cached)} prefill tokens did not have to be recomputed.`);
+      out.push(t("insights.cacheServed", { rate: fmtPct(rate), cached: compact(s.cached) }));
     } else {
-      out.push("No prompt tokens were served from the prefix cache: either prefix caching is off or no prompt reused an earlier one.");
+      out.push(t("insights.noCacheHits"));
     }
   }
 
   const top = i.models[0];
   if (top) {
-    if (i.models.length === 1) out.push(`All traffic ran on ${top.modelId}.`);
-    else if (top.share >= 0.5) out.push(`${top.modelId} dominates, handling ${fmtPct(top.share)} of all tokens across ${i.models.length} models.`);
-    else out.push(`Traffic is spread across ${i.models.length} models; the busiest, ${top.modelId}, has ${fmtPct(top.share)}.`);
+    if (i.models.length === 1) out.push(t("insights.singleModel", { model: top.modelId }));
+    else if (top.share >= 0.5) out.push(t("insights.dominant", { model: top.modelId, share: fmtPct(top.share), models: i.models.length }));
+    else out.push(t("insights.spread", { model: top.modelId, share: fmtPct(top.share), models: i.models.length }));
   }
 
   if (s.genPerPrompt != null && s.generated > 0) {
     const r = s.genPerPrompt;
-    const shape =
-      r < 0.1 ? "a very input-heavy workload (long prompts, short answers)" : r < 0.5 ? "an input-heavy workload" : r <= 1.5 ? "a fairly balanced mix of input and output" : "an output-heavy workload";
+    const shape = r < 0.1 ? t("insights.shape.veryInputHeavy") : r < 0.5 ? t("insights.shape.inputHeavy") : r <= 1.5 ? t("insights.shape.balanced") : t("insights.shape.outputHeavy");
     const perGen = s.prompt / s.generated;
-    out.push(`For every generated token, ${perGen >= 10 ? Math.round(perGen) : perGen.toFixed(1)} prompt tokens were read: ${shape}.`);
+    out.push(t("insights.ratio", { ratio: perGen >= 10 ? Math.round(perGen) : perGen.toFixed(1), shape }));
   }
 
   const completed = i.totals.slice(0, -1).filter((b) => !i.firstKey || b.key >= i.firstKey);
   const idle = completed.filter((b) => b.total <= 0).length;
   if (idle > 0 && completed.length >= 2) {
-    out.push(`${idle} of the ${completed.length} completed ${unitWord}s in ${period === "all time" ? "the retained history" : period} had no traffic at all.`);
+    const vars = { idle, completed: completed.length, period };
+    out.push(hourly ? t("insights.idleHours", vars) : t("insights.idleDays", vars));
   }
 
   const sparkTotals = new Map<string, number>();
   for (const e of i.endpoints) sparkTotals.set(e.sparkId, (sparkTotals.get(e.sparkId) || 0) + e.total);
   if (sparkTotals.size >= 2 && out.length < 6) {
     const [id, v] = [...sparkTotals.entries()].sort((a, b) => b[1] - a[1])[0];
-    out.push(`${i.sparkName(id)} served ${fmtPct(v / s.total)} of all tokens, the most of ${sparkTotals.size} Sparks.`);
+    out.push(t("insights.topSpark", { spark: i.sparkName(id), share: fmtPct(v / s.total), sparks: sparkTotals.size }));
   }
 
   if (i.comparison?.total != null && out.length < 6) {
     const c = i.comparison.total;
-    const prev = i.spec.phrase.replace("the last", "the previous");
-    out.push(Math.abs(c) < 0.01 ? `Usage is flat compared with ${prev}.` : `Usage is ${c > 0 ? "up" : "down"} ${fmtPct(Math.abs(c))} compared with ${prev}.`);
+    const span = rangeSpan(i.spec.key, t);
+    out.push(
+      Math.abs(c) < 0.01
+        ? t("insights.usageFlat", { span })
+        : c > 0
+          ? t("insights.usageUp", { pct: fmtPct(Math.abs(c)), span })
+          : t("insights.usageDown", { pct: fmtPct(Math.abs(c)), span })
+    );
   }
   return out.slice(0, 6);
 }

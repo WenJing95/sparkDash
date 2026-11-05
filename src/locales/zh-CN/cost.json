@@ -1,0 +1,79 @@
+{
+  "title": "成本对比",
+  "subtitle": "按社区价格表计价，估算集群的 Token 用量若使用托管 API 需要花费多少。",
+  "errors": {
+    "usageFallback": "无法加载用量历史",
+    "pricesFallback": "无法加载价格表",
+    "stale": "正在显示上次加载的数据。刷新失败：{{error}}",
+    "load": "无法加载用量历史：{{error}}"
+  },
+  "retry": "重试",
+  "series": { "input": "输入（提示词）", "output": "输出（生成）" },
+  "pricedAs": "计价模型",
+  "chooseHint": "选择一个托管模型，按其价格计算你的用量。",
+  "priceLine": "输入 {{input}} / 1M · 输出 {{output}} / 1M",
+  "contextSize": "{{k}}k 上下文",
+  "chart": {
+    "titleHour": "每小时费用",
+    "titleDay": "每日费用",
+    "sub": "{{period}}，按 {{model}} 标价计算",
+    "subLifetime": "{{period}}，按 {{model}} 标价计算；图表显示保留的每日分桶",
+    "rangeAria": "时间范围",
+    "unit": "费用",
+    "empty": "此时间范围内还没有 Token 流量，暂无可计价的数据。",
+    "ariaHour": "按 {{model}} 计价的每小时 Token 费用堆叠柱状图",
+    "ariaDay": "按 {{model}} 计价的每日 Token 费用堆叠柱状图"
+  },
+  "about": {
+    "title": "计价方式",
+    "rates": "计算的预填充按输入价格计费（{{input}} / 1M）；生成的 Token 按输出价格计费（{{output}} / 1M）。",
+    "cacheRate": "缓存命中的预填充按服务商的缓存读取价格计费（{{rate}} / 1M），{{period}}内前缀缓存为你节省了 {{savings}}。",
+    "noCacheRate": "服务商未公布缓存读取价格，因此缓存命中的预填充按完整输入价格计费。",
+    "sourceBefore": "价格来自社区维护的 ",
+    "sourceLink": "litellm 价格表",
+    "refreshedDaily": "，每日更新",
+    "lastFetched": "（上次获取：{{date}}）",
+    "staleNote": "，但更新失败，价格可能已过时",
+    "sourceEnd": "。",
+    "counters": "Token 数与 Token 统计页使用相同的计数器：覆盖整个集群的所有端口和模型。"
+  },
+  "pricesError": "无法加载价格表。",
+  "noPrices": {
+    "title": "暂无价格数据。",
+    "body": "请启用 MODEL_PRICES_FETCH，或在 MODEL_PRICES_JSON_PATH 提供价格表，然后重试。"
+  },
+  "chooseToCompare": "选择一个托管模型来对比成本。",
+  "loadingPrices": "正在加载价格…",
+  "loading": "加载中…",
+  "tiles": {
+    "aria": "{{period}}费用汇总",
+    "total": "总费用",
+    "totalSub": "{{period}}",
+    "inputSubUnknown": "{{prompt}} 个提示词 Token，全部按计算计价：此引擎不上报缓存占比",
+    "inputSub": "{{prompt}} 个提示词 Token，其中 {{cached}} 个缓存命中",
+    "outputSub": "{{tokens}} 个 Token · 占总费用 {{pct}}%",
+    "savings": "缓存节省",
+    "savingsSub": "与缓存部分按完整输入价格计费相比",
+    "savingsUnknown": "此引擎不上报缓存命中的提示词 Token",
+    "savingsNoDiscount": "服务商未公布缓存折扣",
+    "avgHour": "每小时平均",
+    "avgDay": "每日平均",
+    "perHour": "/ 小时",
+    "perDay": "/ 天",
+    "acrossHours_one": "按 {{count}} 小时计算",
+    "acrossHours_other": "按 {{count}} 小时计算",
+    "acrossDays_one": "按 {{count}} 天计算",
+    "acrossDays_other": "按 {{count}} 天计算",
+    "acrossDaysTracked_one": "按已记录的 {{count}} 天计算",
+    "acrossDaysTracked_other": "按已记录的 {{count}} 天计算",
+    "blended": "综合单价",
+    "blendedSub": "共计价 {{tokens}} 个 Token"
+  },
+  "picker": {
+    "choose": "选择托管模型…",
+    "catalogAria": "模型价格表",
+    "searchPlaceholder": "搜索 {{n}} 个模型…",
+    "searchAria": "搜索模型",
+    "noMatch": "没有与“{{query}}”匹配的模型。"
+  }
+}

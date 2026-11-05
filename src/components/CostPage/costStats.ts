@@ -6,7 +6,9 @@
  * (the input price when the provider does not report one), generated × output
  * price. All prices are USD per token.
  */
+import type { TFunction } from "i18next";
 import type { ModelPrice } from "../../api/costTypes";
+import { i18n } from "../../i18n";
 import type { Entry } from "../TokensPage/tokenStats";
 
 /** Counters are never negative or non-finite; anything else is treated as zero. */
@@ -86,10 +88,13 @@ export function fmtMoney(v: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }
 
-/** Human price line for pickers: "$3.00 / 1M in · $15.00 / 1M out". */
-export function priceLabel(p: Pick<ModelPrice, "inputCostPerToken" | "outputCostPerToken">): string {
+/** English wording when no translator is passed (tests); the page passes useTranslation("cost")'s t. */
+const englishT: TFunction<"cost"> = i18n.getFixedT("en", "cost");
+
+/** Human price line for pickers: "$3.00 / 1M in · $15.00 / 1M out". Amounts stay USD in en-US digits. */
+export function priceLabel(p: Pick<ModelPrice, "inputCostPerToken" | "outputCostPerToken">, t: TFunction<"cost"> = englishT): string {
   const perM = (v: number) => `$${(v * 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-  return `${perM(p.inputCostPerToken)} / 1M in · ${perM(p.outputCostPerToken)} / 1M out`;
+  return t("priceLine", { input: perM(p.inputCostPerToken), output: perM(p.outputCostPerToken) });
 }
 
 // ─── Model picker ────────────────────────────────────────

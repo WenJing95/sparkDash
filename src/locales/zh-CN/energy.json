@@ -1,0 +1,187 @@
+{
+  "title": "集群能耗",
+  "subtitle": "根据 GPU 和 CPU 功耗遥测估算各 Spark 的用电量，并非电表实测。",
+  "updated": "更新于 {{time}}",
+  "range": {
+    "aria": "时间范围",
+    "label": {
+      "24h": "最近 24 小时",
+      "7d": "7 天",
+      "14d": "14 天",
+      "31d": "31 天"
+    },
+    "long": {
+      "24h": "24 小时",
+      "7d": "7 天",
+      "14d": "14 天",
+      "31d": "31 天"
+    }
+  },
+  "reset": {
+    "label": "重置…",
+    "note": "从现在起会继续记录功耗，每月历史也会保留。此操作无法撤销。",
+    "older7d": "7 天前的数据",
+    "ask7d": "删除 7 天前的能耗历史？",
+    "older24h": "24 小时前的数据",
+    "ask24h": "删除 24 小时前的能耗历史？",
+    "everything": "全部",
+    "askAll": "删除全部已记录的能耗历史？"
+  },
+  "copy": {
+    "button": "复制 CSV",
+    "copied": "已复制",
+    "failed": "复制失败",
+    "announce": "CSV 已复制到剪贴板"
+  },
+  "state": {
+    "loadError": "无法加载能耗历史",
+    "retry": "重试",
+    "loading": "正在加载能耗历史…",
+    "membershipTitle": "集群成员已变化",
+    "membershipBody": "能耗统计开始后有 Spark 被添加或移除，总数已无法直接比较。请重启 sparkDash 以开始新的统计范围，在此之前不显示之前的每小时历史。",
+    "warmingTitle": "等待数据",
+    "warmingBody": "还没有记录到完整的能耗区间。所有节点持续上报一段时间的最新功耗遥测后，这里就会显示数据。"
+  },
+  "body": {
+    "stale": "暂时无法刷新，正在显示上次收到的数据。",
+    "estimatedTitle": "估算值，非电表实测。",
+    "estimatedBody": "数据由 GPU 和 CPU 功耗读数累积得出，未计入电源损耗和其他部件，因此墙插实际功耗会略高。"
+  },
+  "tiles": {
+    "aria": "汇总",
+    "currentDraw": "当前功耗",
+    "nodesFresh": "{{fresh}}/{{total}} 个节点数据最新",
+    "average30s": "30 s 平均",
+    "energy": "能耗（{{range}}）",
+    "vsPrevious": "比前 {{range}} {{delta}}%",
+    "noEarlier": "暂无可对比的上一周期",
+    "estimatedCost": "估算费用",
+    "setPrice": "请在设置中填写电价",
+    "perDay": "每天 {{money}}",
+    "costAt": "{{perDay}}，电价 {{price}}/kWh",
+    "averagePower": "平均功耗",
+    "wholeFleet": "整个集群，覆盖 {{hours}} h",
+    "peakHour": "峰值小时",
+    "localTime": "{{when}}（本地时间）",
+    "noFullHour": "尚无完整的一小时",
+    "efficiency": "能效",
+    "outputTokens": "{{tokens}} 个输出 Token",
+    "noTokenData": "此时间范围内没有 Token 数据",
+    "coverage": "覆盖率",
+    "solid": "充分",
+    "partial": "部分",
+    "sparse": "稀少",
+    "sinceHistory": "自开始记录以来",
+    "ofRange": "占所选时间范围"
+  },
+  "noData": {
+    "title": "最近 {{range}}内没有记录到能耗",
+    "body": "请尝试更长的时间范围，或检查各 Spark 是否在上报功耗遥测。"
+  },
+  "energyChart": {
+    "titleHour": "每小时能耗",
+    "titleDay": "每日能耗",
+    "subHour": "按节点统计的 kWh，本地时间。",
+    "subDay": "按节点统计的 kWh，本地时间，按自然日分组。",
+    "legendAria": "节点",
+    "ariaHour": "最近 {{range}}按节点统计的每小时能耗（kWh）",
+    "ariaDay": "最近 {{range}}按节点统计的每日能耗（kWh）",
+    "noTelemetry": "没有记录到遥测数据",
+    "coverageHour": "集群覆盖率：该小时的 {{pct}}",
+    "coverageDay": "集群覆盖率：该日的 {{pct}}"
+  },
+  "powerChart": {
+    "title": "集群平均功耗",
+    "sub": "所有节点都在上报时的每小时平均功率（W）。空缺表示该时段集群数据不完整。",
+    "aria": "最近 {{range}}集群每小时平均功率（W）"
+  },
+  "effChart": {
+    "title": "能效",
+    "subHour": "每生成 1,000 个 Token 消耗的 Wh，按小时统计。越低越好，空闲时间也计入。",
+    "subDay": "每生成 1,000 个 Token 消耗的 Wh，按天统计。越低越好，空闲时间也计入。",
+    "ariaHour": "每小时每 1,000 个生成 Token 的能耗",
+    "ariaDay": "每日每 1,000 个生成 Token 的能耗"
+  },
+  "nodes": {
+    "title": "按节点",
+    "sub": "每个节点只在上报期间计量，因此各节点的覆盖率不同。",
+    "caption": "最近 {{range}}各节点能耗",
+    "col": {
+      "spark": "Spark",
+      "energy": "能耗",
+      "share": "占比",
+      "avgWatts": "平均 W",
+      "peakHour": "峰值小时",
+      "coverage": "覆盖率",
+      "cost": "费用"
+    },
+    "costNeedsPrice": "计算费用需要电价，请在设置中填写。"
+  },
+  "insights": {
+    "title": "数据洞察",
+    "empty": "此时间范围内记录的数据足够多后会显示数据洞察。",
+    "topNode": "{{node}} 能耗最高：{{kwh}} kWh，占集群总量的 {{pct}}%。",
+    "topNodeAveraging": "{{node}} 能耗最高：{{kwh}} kWh，占集群总量的 {{pct}}%，上报期间平均功耗 {{watts}}。",
+    "topNodeSpread": "是第二名的 {{ratio}} 倍。",
+    "peak": "功耗最高的一小时是 {{when}}（本地时间），为 {{watts}}。",
+    "peakAndLow": "功耗最高的一小时是 {{when}}（本地时间），为 {{watts}}；最低的是 {{lowWhen}}，为 {{lowWatts}}。",
+    "bestDay": "{{day}}是用电最多的一天，共 {{kwh}} kWh，比数据充分日的平均值 {{avg}} kWh 高 {{pct}}%。",
+    "nightLower": "夜间（本地时间 22:00 至 06:00）集群平均功耗为 {{night}}，比白天的平均值 {{day}} 低 {{pct}}%。",
+    "nightHigher": "夜间（本地时间 22:00 至 06:00）集群平均功耗为 {{night}}，比白天的平均值 {{day}} 高 {{pct}}%。",
+    "steady": "全天功耗平稳：夜间 {{night}}，白天 {{day}}。",
+    "weeklyCost": "按每 kWh {{price}} 计算，以当前用电水平每周约花费 {{cost}}。这只是根据已记录数据的粗略推算，并非预测。",
+    "tokensPerKwh": "集群每 kWh 约生成 {{tokens}} 个输出 Token（每 1,000 个 Token 约 {{wh}} Wh），同时段的空闲时间也计算在内。"
+  },
+  "about": {
+    "title": "关于这些数据",
+    "estimatedTitle": "估算。",
+    "estimatedBody": "能耗由功耗遥测（GPU + CPU）随时间累积得出，并非电表读数。",
+    "gapsTitle": "空缺。",
+    "gapsBody": "没有遥测数据的小时会被略去，不做填补。覆盖率是所有节点都上报最新数据的时间占比；各节点的覆盖率见表格。",
+    "efficiencyTitle": "能效",
+    "efficiencyBody": "只统计所有节点都在上报期间的 Token 和能耗。",
+    "retentionTitle": "保留期限。",
+    "retentionBody": "每小时历史保留 31 天。更长的时间范围只显示目前已有的数据。",
+    "localTimeTitle": "本地时间。",
+    "localTimeBody": "小时和日期按设置中的时区划分，未设置时使用此浏览器的时区（{{timeZone}}）。每小时数据按 UTC 存储。",
+    "membershipTitle": "集群成员。",
+    "membershipBody": "添加或移除 Spark 后，需要重启 sparkDash 才会开始新的统计范围。"
+  },
+  "monthly": {
+    "title": "每月历史",
+    "sub": "按 UTC 自然月汇总，永久保存，重置、重启和集群变化都不会影响。月份按 UTC 划分，因此不会与按本地时间结算的电费账单一致。",
+    "viewAria": "每月视图",
+    "month": "月",
+    "year": "年",
+    "monthAria": "月份",
+    "yearAria": "年份",
+    "loadError": "无法加载每月历史：{{error}}",
+    "loading": "正在加载每月历史…",
+    "nothingArchived": "还没有归档数据。各 Spark 上报一段时间后，每个已结束的分钟都会计入所属月份。",
+    "noEnergyIn": "{{label}}没有记录到能耗。",
+    "summaryAria": "{{label}}汇总",
+    "stat": {
+      "energy": "能耗",
+      "cost": "费用",
+      "efficiency": "能效",
+      "fleetCoverage": "集群覆盖率",
+      "status": "状态"
+    },
+    "closed": "已结算",
+    "open": "进行中，仍在统计",
+    "caption": "{{label}}各节点能耗",
+    "col": {
+      "spark": "Spark",
+      "energy": "能耗",
+      "share": "占比",
+      "coverage": "覆盖率",
+      "cost": "费用"
+    },
+    "footClosed": "只列出在{{label}}有上报的 Spark。覆盖率是各节点被计量的时间占当月的比例。估算值，非电表实测。",
+    "footOpen": "只列出在{{label}}有上报的 Spark。覆盖率是各节点到目前为止被计量的时间占当月的比例。估算值，非电表实测。",
+    "yearTotal": "（{{year}} 年合计）",
+    "yearCost": " · 约 {{money}}",
+    "yearEmpty": "{{year}} 年没有记录到能耗。",
+    "yearChartAria": "{{year}} 年每月能耗（kWh）"
+  }
+}

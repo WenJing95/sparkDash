@@ -1,0 +1,11 @@
+{
+  "title": "温度",
+  "subtitle": "最近 {{range}}内集群各 GPU 的温度。服务器按分钟保存一周的历史数据，刷新页面后图表不会丢失。",
+  "range": { "aria": "时间范围", "label24h": "最近 24 小时", "label7d": "最近 7 天", "long24h": "24 小时", "long7d": "7 天" },
+  "loadError": "无法加载 GPU 历史数据",
+  "retry": "重试",
+  "loading": "正在加载温度历史…",
+  "warmingUp": { "title": "等待数据", "body": "此时间范围内还没有记录到 GPU 温度。设备上报遥测数据后会出现图表，并随时间逐步补全。" },
+  "card": { "now": "当前 {{temp}}°C", "offline": "离线", "empty": "此时间范围内没有温度采样。" },
+  "chart": { "aria": "GPU 温度历史", "now": "现在" }
+}

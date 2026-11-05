@@ -1,0 +1,152 @@
+{
+  "title": "Fleet energy",
+  "subtitle": "Estimated electricity use of your Sparks from GPU and CPU power telemetry. Not wall-metered.",
+  "updated": "Updated {{time}}",
+  "range": {
+    "aria": "Time range",
+    "label": { "24h": "Last 24 h", "7d": "7 d", "14d": "14 d", "31d": "31 d" },
+    "long": { "24h": "24 hours", "7d": "7 days", "14d": "14 days", "31d": "31 days" }
+  },
+  "reset": {
+    "label": "Reset…",
+    "note": "Power keeps being recorded from now on, and Monthly history is kept. This can't be undone.",
+    "older7d": "Older than 7 days",
+    "ask7d": "Delete energy history older than 7 days?",
+    "older24h": "Older than 24 hours",
+    "ask24h": "Delete energy history older than 24 hours?",
+    "everything": "Everything",
+    "askAll": "Delete all recorded energy history?"
+  },
+  "copy": { "button": "Copy CSV", "copied": "Copied", "failed": "Copy failed", "announce": "CSV copied to clipboard" },
+  "state": {
+    "loadError": "Could not load energy history",
+    "retry": "Retry",
+    "loading": "Loading energy history…",
+    "membershipTitle": "Fleet membership changed",
+    "membershipBody": "Sparks were added or removed since energy accounting started, so totals would no longer be comparable. Restart sparkDash to start a new accounting scope. Previous hourly history is withheld until then.",
+    "warmingTitle": "Warming up",
+    "warmingBody": "No complete energy interval has been recorded yet. Data appears here once every node has reported fresh power telemetry for a little while."
+  },
+  "body": {
+    "stale": "Could not refresh just now; showing the last data received.",
+    "estimatedTitle": "Estimated, not metered.",
+    "estimatedBody": " Figures are integrated from GPU and CPU power readings and leave out power-supply losses and other components, so the wall draw is somewhat higher."
+  },
+  "tiles": {
+    "aria": "Summary",
+    "currentDraw": "Current draw",
+    "nodesFresh": "{{fresh}}/{{total}} nodes fresh",
+    "average30s": "30 s average",
+    "energy": "Energy, {{range}}",
+    "vsPrevious": "{{delta}}% vs previous {{range}}",
+    "noEarlier": "No earlier period to compare yet",
+    "estimatedCost": "Estimated cost",
+    "setPrice": "Set an electricity price in Settings",
+    "perDay": "{{money}} per day",
+    "costAt": "{{perDay}} at {{price}}/kWh",
+    "averagePower": "Average power",
+    "wholeFleet": "Whole fleet, over {{hours}} h covered",
+    "peakHour": "Peak hour",
+    "localTime": "{{when}} local",
+    "noFullHour": "No full hour yet",
+    "efficiency": "Efficiency",
+    "outputTokens": "{{tokens}} output tokens",
+    "noTokenData": "No token data in this range",
+    "coverage": "Coverage",
+    "solid": "Solid",
+    "partial": "Partial",
+    "sparse": "Sparse",
+    "sinceHistory": "since history began",
+    "ofRange": "of the range"
+  },
+  "noData": {
+    "title": "No energy recorded in the last {{range}}",
+    "body": "Try a longer range, or check that the Sparks are reporting power telemetry."
+  },
+  "energyChart": {
+    "titleHour": "Energy per hour",
+    "titleDay": "Energy per day",
+    "subHour": "kWh by node, local time.",
+    "subDay": "kWh by node, local time, grouped by calendar day.",
+    "legendAria": "Nodes",
+    "ariaHour": "Energy in kWh per hour by node, last {{range}}",
+    "ariaDay": "Energy in kWh per day by node, last {{range}}",
+    "noTelemetry": "No telemetry recorded",
+    "coverageHour": "Fleet coverage {{pct}} of the hour",
+    "coverageDay": "Fleet coverage {{pct}} of the day"
+  },
+  "powerChart": {
+    "title": "Average fleet power",
+    "sub": "Watts per hour while every node reported. Gaps mean no full-fleet coverage.",
+    "aria": "Average fleet power in watts per hour, last {{range}}"
+  },
+  "effChart": {
+    "title": "Efficiency",
+    "subHour": "Wh per 1,000 generated tokens, per hour. Lower is better; idle time counts.",
+    "subDay": "Wh per 1,000 generated tokens, per day. Lower is better; idle time counts.",
+    "ariaHour": "Energy per 1,000 generated tokens per hour",
+    "ariaDay": "Energy per 1,000 generated tokens per day"
+  },
+  "nodes": {
+    "title": "By node",
+    "sub": "Each node is measured only while it reports, so coverage differs per node.",
+    "caption": "Energy by node for the last {{range}}",
+    "col": { "spark": "Spark", "energy": "Energy", "share": "Share", "avgWatts": "Avg W", "peakHour": "Peak hour", "coverage": "Coverage", "cost": "Cost" },
+    "costNeedsPrice": "Cost needs an electricity price; set one in Settings."
+  },
+  "insights": {
+    "title": "Insights",
+    "empty": "Insights appear once there is enough recorded data in this range.",
+    "topNode": "{{node}} uses the most energy: {{kwh}} kWh, {{pct}}% of the fleet total.",
+    "topNodeAveraging": "{{node}} uses the most energy: {{kwh}} kWh, {{pct}}% of the fleet total, averaging {{watts}} while reporting.",
+    "topNodeSpread": " That is {{ratio}}x the next node.",
+    "peak": "The highest-draw hour was {{when}} (local) at {{watts}}.",
+    "peakAndLow": "The highest-draw hour was {{when}} (local) at {{watts}}; the lowest was {{lowWhen}} at {{lowWatts}}.",
+    "bestDay": "{{day}} was the highest-use day with {{kwh}} kWh, {{pct}}% above the {{avg}} kWh average of well-covered days.",
+    "nightLower": "Overnight (22:00 to 06:00 local) the fleet averaged {{night}}, {{pct}}% lower than the {{day}} daytime average.",
+    "nightHigher": "Overnight (22:00 to 06:00 local) the fleet averaged {{night}}, {{pct}}% higher than the {{day}} daytime average.",
+    "steady": "Draw is steady around the clock: {{night}} overnight versus {{day}} during the day.",
+    "weeklyCost": "At {{price}} per kWh, this pace would cost about {{cost}} per week. This is a rough extrapolation from the data recorded so far, not a forecast.",
+    "tokensPerKwh": "The fleet generated about {{tokens}} output tokens per kWh ({{wh}} Wh per 1,000 tokens), counting idle time in the same hours."
+  },
+  "about": {
+    "title": "About this data",
+    "estimatedTitle": "Estimated.",
+    "estimatedBody": " Energy is power telemetry (GPU + CPU) integrated over time, not a wall meter reading.",
+    "gapsTitle": "Gaps.",
+    "gapsBody": " Hours with no telemetry are left out, never filled in. Coverage is the share of time every node reported fresh data; per-node coverage is in the table.",
+    "efficiencyTitle": "Efficiency",
+    "efficiencyBody": " only counts tokens and energy from time when all nodes were reporting.",
+    "retentionTitle": "Retention.",
+    "retentionBody": " Hourly history is kept for 31 days. Longer ranges show what exists so far.",
+    "localTimeTitle": "Local time.",
+    "localTimeBody": " Hours and days follow the time zone in Settings, or this browser's by default ({{timeZone}}). Hourly rows are stored in UTC.",
+    "membershipTitle": "Membership.",
+    "membershipBody": " Adding or removing a Spark starts a new accounting scope after a sparkDash restart."
+  },
+  "monthly": {
+    "title": "Monthly history",
+    "sub": "Totals per UTC month, kept permanently. They survive resets, restarts and changes to the fleet. Months are UTC, so they will not match a local-time electricity bill.",
+    "viewAria": "Monthly view",
+    "month": "Month",
+    "year": "Year",
+    "monthAria": "Month",
+    "yearAria": "Year",
+    "loadError": "Could not load monthly history: {{error}}",
+    "loading": "Loading monthly history…",
+    "nothingArchived": "Nothing archived yet. Each finished minute is added to its month once the Sparks have been reporting for a little while.",
+    "noEnergyIn": "No energy was recorded in {{label}}.",
+    "summaryAria": "{{label}} summary",
+    "stat": { "energy": "Energy", "cost": "Cost", "efficiency": "Efficiency", "fleetCoverage": "Fleet coverage", "status": "Status" },
+    "closed": "Closed",
+    "open": "Open, still counting",
+    "caption": "Energy by node for {{label}}",
+    "col": { "spark": "Spark", "energy": "Energy", "share": "Share", "coverage": "Coverage", "cost": "Cost" },
+    "footClosed": "Only the Sparks that reported in {{label}} are listed. Coverage is the share of the month each one was measured. Estimated, not metered.",
+    "footOpen": "Only the Sparks that reported in {{label}} are listed. Coverage is the share of the month each one was measured so far. Estimated, not metered.",
+    "yearTotal": " in {{year}}",
+    "yearCost": " · about {{money}}",
+    "yearEmpty": "No energy recorded in {{year}}.",
+    "yearChartAria": "Energy in kWh per month, {{year}}"
+  }
+}
