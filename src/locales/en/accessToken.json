@@ -1,0 +1,11 @@
+{
+  "title": "Access token",
+  "introRequired": "This sparkDash server requires an access token for live telemetry and changes. Enter the value of SPARKDASH_TOKEN set on the host. It is stored in this browser only.",
+  "introManual": "Enter the value of SPARKDASH_TOKEN set on the host. It is stored in this browser only.",
+  "label": "Token",
+  "rejected": "The server rejected this token. Check SPARKDASH_TOKEN on the host and try again.",
+  "savedRejected": "The saved token was rejected by the server.",
+  "cancel": "Cancel",
+  "save": "Save",
+  "checking": "Checking…"
+}

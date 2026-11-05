@@ -1,0 +1,74 @@
+{
+  "title": "GPU 频率上限",
+  "reading": "正在读取设备…",
+  "readFailed": "无法读取 GPU 频率上限",
+  "notAvailable": "此设备不支持。",
+  "refused": "设备拒绝了此更改",
+  "refreshFailed": "刷新失败：{{error}}",
+  "confirmPersistCron": "要通过 @reboot cron 任务在重启后保持频率上限吗？此设备每次启动时都会重新应用该上限。",
+  "confirmPersistService": "要通过系统服务在重启后保持频率上限吗？此设备每次启动时都会重新应用该上限。",
+  "confirmRemove": "要移除此设备的 GPU 频率上限及其开机钩子吗？",
+  "result": {
+    "capped": "频率上限已设为 {{mhz}} MHz，下次重启前有效。",
+    "cappedKeptCron": "频率上限已设为 {{mhz}} MHz，并由 @reboot cron 任务在重启后保持。",
+    "cappedKeptService": "频率上限已设为 {{mhz}} MHz，并由开机服务在重启后保持。",
+    "removed": "已移除频率上限。"
+  },
+  "now": {
+    "cappedAt": "频率上限：",
+    "hwMax": "（GPU 最高 {{mhz}} MHz）",
+    "noCap": "未设置频率上限",
+    "bootService": " · 开机服务{{state}}",
+    "enabled": "已启用",
+    "installed": "已安装",
+    "clocks": "（{{clocks}} MHz）",
+    "cronJob": " · @reboot 任务",
+    "notKept": " · 重启后不保持"
+  },
+  "bootFailedBefore": "@reboot 任务在本次启动时已运行，但未能重新应用频率上限，因此 GPU 目前没有频率限制。点击“应用”重新设置，或检查 ",
+  "bootFailedAfter": " 对此用户是否仍然可用。",
+  "mhzMax": "MHz 上限",
+  "apply": "应用",
+  "working": "处理中…",
+  "removeLimit": "取消限制",
+  "persist": {
+    "unavailable": "重启后保持（此设备不支持）",
+    "cron": "重启后保持（使用 @reboot cron 任务）",
+    "service": "重启后保持（使用系统服务）"
+  },
+  "sudo": {
+    "label": "此设备的 sudo 密码",
+    "placeholder": "仅用于本次更改",
+    "hint": "此设备未配置免密码 sudo。密码只通过当前连接发送一次，用于执行此次更改，之后即丢弃，不会保存也不会写入日志。"
+  },
+  "insecure": {
+    "before": "当前连接既不是 https，也不是在本机上访问，因此不在这里输入 sudo 密码（否则密码会以明文在网络上传输）。请通过 https 或直接在 Spark 上打开仪表盘，或使用下方命令在 Spark 上执行此更改，或为该用户配置免密码 sudo，允许运行 ",
+    "and": " 和 ",
+    "after": "，只需为这两个命令添加规则即可。"
+  },
+  "runs": {
+    "rootBefore": "使用已保存的连接设置，在此设备上以 root 身份运行 ",
+    "rootAfter": "。立即生效，不随“保存”一起执行。",
+    "sudoBefore": "使用已保存的连接设置，通过 sudo 运行 ",
+    "sudoAfter": "。立即生效，不随“保存”一起执行。"
+  },
+  "cannotPersist": "重启后保持频率上限需要可获得 root shell 的免密码 sudo（用于开机服务），或正在运行的 cron 服务（用于 @reboot 任务），此设备两者都没有。频率上限仅在下次重启前有效。",
+  "range": {
+    "between": "请输入 {{min}} 到 {{max}} 之间的整数。",
+    "from": "请输入不小于 {{min}} 的整数。"
+  },
+  "manual": {
+    "summary": "在 Spark 上手动运行",
+    "hintBefore": "将命令粘贴到 Spark 的终端中运行。命令使用普通的 ",
+    "hintAfter": "，因此会在终端里要求输入密码。执行的步骤与“应用”和“取消限制”按钮相同。",
+    "showApply": "显示命令：应用",
+    "showRemove": "显示命令：取消限制",
+    "buildFailed": "无法生成命令",
+    "titleApply": "将频率上限设为 {{mhz}} MHz",
+    "titleApplyKeep": "将频率上限设为 {{mhz}} MHz 并在重启后保持",
+    "titleRemove": "移除频率上限",
+    "commandAria": "在 Spark 上运行的命令",
+    "copy": "复制",
+    "copied": "已复制"
+  }
+}

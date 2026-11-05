@@ -1,0 +1,69 @@
+{
+  "title": "Harness 会话",
+  "close": "关闭",
+  "loading": "加载中…",
+  "back": "上一步",
+  "next": "下一步",
+  "save": "保存",
+  "saving": "正在保存…",
+  "stepOf": "第 {{step}} 步，共 {{total}} 步：{{name}}",
+  "steps": {
+    "harnesses": "选择 Harness",
+    "connection": "连接",
+    "routes": "路由",
+    "check": "检查",
+    "review": "确认"
+  },
+  "errors": {
+    "urlScheme": "请使用 http 或 https 地址",
+    "urlCredentials": "请从 URL 中移除用户名和密码",
+    "urlHost": "URL 中缺少主机名",
+    "urlMissing": "请输入辅助服务 URL",
+    "pickHarness": "请至少选择一个 Harness",
+    "routePort": "每条路由都需要 1 到 65535 之间的端口",
+    "load": "无法加载辅助服务",
+    "check": "检查失败",
+    "save": "保存失败",
+    "remove": "删除失败"
+  },
+  "list": {
+    "disabled": "已停用",
+    "edit": "编辑",
+    "disable": "停用",
+    "enable": "启用",
+    "remove": "删除",
+    "add": "添加辅助服务",
+    "confirmRemove": "删除辅助服务 {{name}}？"
+  },
+  "connection": {
+    "name": "名称",
+    "nameAria": "辅助服务名称",
+    "url": "辅助服务 URL",
+    "token": "Bearer 令牌",
+    "newToken": "新的 Bearer 令牌（留空则保留已保存的令牌）",
+    "clearToken": "清除已保存的令牌"
+  },
+  "routes": {
+    "help": "一条路由把一个 Harness 对应到某台 Spark 和端口。带目录前缀的路由优先于通用路由。没有路由的会话不会显示在卡片上。",
+    "sparkAria": "{{harness}} 对应的 Spark",
+    "portAria": "{{harness}} 对应的端口",
+    "prefixAria": "{{harness}} 的目录前缀",
+    "unassigned": "未分配",
+    "prefix": "目录前缀（可选）"
+  },
+  "check": {
+    "run": "检查连接",
+    "checking": "正在检查…",
+    "sessions": "{{n}} 个会话",
+    "stale": "，数据已过期",
+    "coverage": {
+      "supported": "支持",
+      "unsupported": "不支持",
+      "unavailable": "不可用",
+      "partial": "部分支持"
+    }
+  },
+  "review": {
+    "via": "{{harnesses}}，通过 {{url}}"
+  }
+}

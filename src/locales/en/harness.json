@@ -1,0 +1,69 @@
+{
+  "title": "Harness sessions",
+  "close": "Close",
+  "loading": "Loading…",
+  "back": "Back",
+  "next": "Next",
+  "save": "Save",
+  "saving": "Saving…",
+  "stepOf": "Step {{step}} of {{total}}: {{name}}",
+  "steps": {
+    "harnesses": "Harnesses",
+    "connection": "Connection",
+    "routes": "Routes",
+    "check": "Check",
+    "review": "Review"
+  },
+  "errors": {
+    "urlScheme": "Use an http or https URL",
+    "urlCredentials": "Remove the username and password from the URL",
+    "urlHost": "The URL needs a host",
+    "urlMissing": "Enter a helper URL",
+    "pickHarness": "Pick at least one harness",
+    "routePort": "Each route needs a port from 1 to 65535",
+    "load": "Could not load helpers",
+    "check": "Check failed",
+    "save": "Save failed",
+    "remove": "Remove failed"
+  },
+  "list": {
+    "disabled": "Disabled",
+    "edit": "Edit",
+    "disable": "Disable",
+    "enable": "Enable",
+    "remove": "Remove",
+    "add": "Add helper",
+    "confirmRemove": "Remove helper {{name}}?"
+  },
+  "connection": {
+    "name": "Name",
+    "nameAria": "Helper name",
+    "url": "Helper URL",
+    "token": "Bearer token",
+    "newToken": "New bearer token (leave blank to keep the saved one)",
+    "clearToken": "Clear saved token"
+  },
+  "routes": {
+    "help": "A route sends one harness to a Spark and port. A directory prefix wins over a general route. Rows with no route stay off the cards.",
+    "sparkAria": "Spark for {{harness}}",
+    "portAria": "Port for {{harness}}",
+    "prefixAria": "Directory prefix for {{harness}}",
+    "unassigned": "Unassigned",
+    "prefix": "Directory prefix, optional"
+  },
+  "check": {
+    "run": "Check connection",
+    "checking": "Checking…",
+    "sessions": "{{n}} sessions",
+    "stale": ", stale",
+    "coverage": {
+      "supported": "supported",
+      "unsupported": "unsupported",
+      "unavailable": "unavailable",
+      "partial": "partial"
+    }
+  },
+  "review": {
+    "via": "{{harnesses}} via {{url}}"
+  }
+}

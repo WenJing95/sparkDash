@@ -13,14 +13,14 @@ const base: AddSparkDraft = {
 
 describe("add spark steps", () => {
   it("requires a LAN IP for remote hosts only", () => {
-    expect(validateConnect(base)).toMatch(/LAN IP/);
+    expect(validateConnect(base)).toBe("lanIpRequired");
     expect(validateConnect({ ...base, lanIp: "10.0.0.2" })).toBeNull();
     expect(validateConnect({ ...base, isLocal: true })).toBeNull();
   });
 
   it("requires a password for password auth", () => {
     const cfg = { ...base, lanIp: "10.0.0.2", ssh: { ...base.ssh, auth: "pass" as const } };
-    expect(validateConnect(cfg)).toMatch(/Password/);
+    expect(validateConnect(cfg)).toBe("passwordRequired");
     expect(validateConnect({ ...cfg, ssh: { ...cfg.ssh, password: "x" } })).toBeNull();
     // local hosts never use SSH
     expect(validateConnect({ ...cfg, isLocal: true })).toBeNull();

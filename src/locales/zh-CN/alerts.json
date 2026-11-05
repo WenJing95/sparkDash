@@ -1,0 +1,79 @@
+{
+  "title": "告警通知",
+  "close": "关闭",
+  "loading": "加载中…",
+  "save": "保存",
+  "saving": "正在保存…",
+  "saved": "已保存",
+  "unsaved": "有未保存的更改",
+  "send": {
+    "title": "发送通知",
+    "help": "服务器会监视健康检查结果和总览异常，某一项持续到设定的等待时间后通知下方渠道，恢复时再通知一次。默认关闭，关闭时不做任何判断也不发送通知。更改立即保存。"
+  },
+  "firing": {
+    "title": "正在告警",
+    "heading": "正在告警 · {{n}}",
+    "now": "刚刚"
+  },
+  "offNote": "开启通知后才能修改通知内容和发送渠道。",
+  "sources": {
+    "strip": {
+      "title": "总览异常",
+      "help": "总览页异常横条中显示的各类情况。"
+    },
+    "health": {
+      "title": "健康检查结果",
+      "help": "设备卡片上显示的健康检查结果，使用健康规则自己的阈值。"
+    }
+  },
+  "rule": {
+    "toggle": "{{name}} 通知",
+    "after": "持续",
+    "waitAria": "{{name}} 等待时长（秒）"
+  },
+  "waitNotNumber": "{{name}}：等待时长必须是秒数",
+  "channels": {
+    "title": "通知渠道",
+    "add": "添加渠道",
+    "help": "URL 与设备密码一起加密保存，显示时会隐藏部分内容。可以指向局域网（如自建的 ntfy）或互联网，规则与设备和 LLM 地址相同；不会跟随重定向。",
+    "empty": "还没有通知渠道，告警仍会显示在总览页的异常横条中。",
+    "nameAria": "渠道名称",
+    "namePlaceholder": "名称",
+    "typeAria": "渠道类型",
+    "severityAria": "最低级别",
+    "warningUp": "警告及以上",
+    "criticalOnly": "仅严重",
+    "enabledAria": "启用渠道 {{name}}",
+    "urlAria": "渠道 URL",
+    "ntfyPlaceholder": "https://ntfy.sh/your-topic 或 http://192.168.1.10/topic",
+    "urlHidden": "已保存的 URL 已隐藏。保持不变即沿用，也可粘贴新的 URL。",
+    "urlMissing": "此渠道没有保存 URL，请重新输入。",
+    "sendTest": "发送测试",
+    "sending": "正在发送…",
+    "sent": "已发送",
+    "failed": "发送失败",
+    "remove": "删除",
+    "lastFailed": "上次发送失败：{{error}}"
+  },
+  "repeat": {
+    "title": "告警未恢复时重复提醒",
+    "help": "对尚未恢复的告警重复发送通知。",
+    "off": "关闭",
+    "hour": "每小时",
+    "hours4": "每 4 小时",
+    "hours12": "每 12 小时",
+    "day": "每天",
+    "minutes": "每 {{n}} 分钟"
+  },
+  "recent": {
+    "title": "最近记录",
+    "help": "服务器启动以来触发和恢复的告警。每条发送成功或失败的通知也会显示在活动页面。",
+    "empty": "尚未触发任何告警。",
+    "resolved": "已恢复",
+    "ago": "{{since}}前"
+  },
+  "severity": {
+    "critical": "严重",
+    "warning": "警告"
+  }
+}

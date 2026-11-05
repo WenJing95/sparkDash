@@ -1,0 +1,74 @@
+{
+  "title": "GPU clock cap",
+  "reading": "Reading the unit…",
+  "readFailed": "Could not read the GPU clock cap",
+  "notAvailable": "Not available on this unit.",
+  "refused": "The unit refused the change",
+  "refreshFailed": "Could not refresh: {{error}}",
+  "confirmPersistCron": "Keep the cap after reboot with an @reboot cron job? It re-applies the cap at every boot on this unit.",
+  "confirmPersistService": "Keep the cap after reboot with a system service? It re-applies the cap at every boot on this unit.",
+  "confirmRemove": "Remove the GPU clock cap and its boot hook from this unit?",
+  "result": {
+    "capped": "Capped at {{mhz}} MHz until the next reboot.",
+    "cappedKeptCron": "Capped at {{mhz}} MHz and kept after reboot by an @reboot cron job.",
+    "cappedKeptService": "Capped at {{mhz}} MHz and kept after reboot by a boot service.",
+    "removed": "Cap removed."
+  },
+  "now": {
+    "cappedAt": "Capped at ",
+    "hwMax": " (GPU maximum {{mhz}} MHz)",
+    "noCap": "No cap in effect",
+    "bootService": " · boot service {{state}}",
+    "enabled": "enabled",
+    "installed": "installed",
+    "clocks": " ({{clocks}} MHz)",
+    "cronJob": " · @reboot job",
+    "notKept": " · not kept after reboot"
+  },
+  "bootFailedBefore": "The @reboot job ran at this boot and could not re-apply the cap, so the GPU is not capped. Press Apply to cap it again, or check that ",
+  "bootFailedAfter": " still works for this user.",
+  "mhzMax": "MHz max",
+  "apply": "Apply",
+  "working": "Working…",
+  "removeLimit": "Remove limit",
+  "persist": {
+    "unavailable": "Keep after reboot (not available on this unit)",
+    "cron": "Keep after reboot (an @reboot cron job)",
+    "service": "Keep after reboot (a system service)"
+  },
+  "sudo": {
+    "label": "sudo password for this unit",
+    "placeholder": "used for this change only",
+    "hint": "This unit has no passwordless sudo. The password is sent once, over this connection, to run the change, then discarded: it is never stored or logged."
+  },
+  "insecure": {
+    "before": "This connection is not on https or the machine itself, so a sudo password is not typed here (it would cross the network in the clear). Open the dashboard over https or from the Spark itself, run the change on the Spark with the command below, or give that user passwordless sudo for ",
+    "and": " and ",
+    "after": " — a rule for those two commands is enough."
+  },
+  "runs": {
+    "rootBefore": "Runs ",
+    "rootAfter": " as root on this machine, using the saved connection settings. Applies at once; it is not part of Save.",
+    "sudoBefore": "Runs ",
+    "sudoAfter": " through sudo, using the saved connection settings. Applies at once; it is not part of Save."
+  },
+  "cannotPersist": "Keeping the cap after reboot needs either passwordless sudo for a root shell (the boot service) or a running cron service (an @reboot job), and this unit offers neither. The cap applies until the next reboot.",
+  "range": {
+    "between": "Enter a whole number from {{min}} to {{max}}.",
+    "from": "Enter a whole number from {{min}}."
+  },
+  "manual": {
+    "summary": "Run it on the Spark yourself",
+    "hintBefore": "Paste the command into a terminal on the Spark. It uses plain ",
+    "hintAfter": ", so it asks for your password there. It is the same steps the Apply and Remove buttons run.",
+    "showApply": "Show command: apply",
+    "showRemove": "Show command: remove",
+    "buildFailed": "Could not build the command",
+    "titleApply": "Cap at {{mhz}} MHz",
+    "titleApplyKeep": "Cap at {{mhz}} MHz and keep after reboot",
+    "titleRemove": "Remove the cap",
+    "commandAria": "Command to run on the Spark",
+    "copy": "Copy",
+    "copied": "Copied"
+  }
+}

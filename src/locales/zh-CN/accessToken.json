@@ -1,0 +1,11 @@
+{
+  "title": "访问令牌",
+  "introRequired": "此 sparkDash 服务器要求提供访问令牌才能查看实时监控数据和进行更改。请输入主机上设置的 SPARKDASH_TOKEN 的值。令牌只保存在此浏览器中。",
+  "introManual": "请输入主机上设置的 SPARKDASH_TOKEN 的值。令牌只保存在此浏览器中。",
+  "label": "令牌",
+  "rejected": "服务器拒绝了此令牌。请检查主机上的 SPARKDASH_TOKEN 后重试。",
+  "savedRejected": "服务器拒绝了已保存的令牌。",
+  "cancel": "取消",
+  "save": "保存",
+  "checking": "正在验证…"
+}
