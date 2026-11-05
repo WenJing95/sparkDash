@@ -1,5 +1,13 @@
+import type { TFunction } from "i18next";
 import type { QualityBenchJob, QualityCategory } from "../../api/types";
+import { i18n } from "../../i18n";
 import { mcnemarExactP, type QualityCompareRow } from "../../shared/qualityBench.js";
+
+/**
+ * English wording for callers that format outside a component (tests, plain-text helpers).
+ * Components pass their own `t` so the text follows the UI language.
+ */
+const EN: TFunction<"quality"> = i18n.getFixedT("en", "quality");
 
 /** One item the two runs scored differently. */
 export interface QualityDisagreement {
@@ -40,10 +48,8 @@ export function formatP(p: number): string {
   return s;
 }
 
-function excludedNote(excluded: number): string {
-  return excluded > 0
-    ? ` ${excluded} pair${excluded === 1 ? "" : "s"} left out (request error or timeout in one run).`
-    : "";
+function excludedNote(t: TFunction<"quality">, excluded: number): string {
+  return excluded > 0 ? t("verdict.excluded", { count: excluded }) : "";
 }
 
 /**
@@ -52,7 +58,7 @@ function excludedNote(excluded: number): string {
  * two-sided test on the totals is valid. Pairs with a request error in either run
  * are not in the counts; `excluded` says how many.
  */
-export function overallVerdict(rows: QualityCompareRow[]): QualityOverallVerdict | null {
+export function overallVerdict(rows: QualityCompareRow[], t: TFunction<"quality"> = EN): QualityOverallVerdict | null {
   if (!rows.length) return null;
   const paired = rows.reduce((n, r) => n + r.paired, 0);
   const excluded = rows.reduce((n, r) => n + (r.excluded ?? 0), 0);
@@ -60,7 +66,7 @@ export function overallVerdict(rows: QualityCompareRow[]): QualityOverallVerdict
   const onlyB = rows.reduce((n, r) => n + r.onlyB, 0);
   const p = mcnemarExactP(onlyA, onlyB);
   const withinNoise = p >= 0.05;
-  const note = excludedNote(excluded);
+  const note = excludedNote(t, excluded);
   if (onlyA + onlyB === 0) {
     return {
       paired,
@@ -70,7 +76,7 @@ export function overallVerdict(rows: QualityCompareRow[]): QualityOverallVerdict
       p,
       withinNoise,
       tone: "same",
-      text: `Both runs scored every shared item the same.${note}`,
+      text: t("verdict.same", { note }),
     };
   }
   if (withinNoise) {
@@ -82,7 +88,7 @@ export function overallVerdict(rows: QualityCompareRow[]): QualityOverallVerdict
       p,
       withinNoise,
       tone: "noise",
-      text: `McNemar p = ${formatP(p)}. The difference is within noise.${note}`,
+      text: t("verdict.noise", { p: formatP(p), note }),
     };
   }
   const better = onlyA > onlyB;
@@ -94,7 +100,7 @@ export function overallVerdict(rows: QualityCompareRow[]): QualityOverallVerdict
     p,
     withinNoise,
     tone: better ? "better" : "worse",
-    text: `McNemar p = ${formatP(p)}. This run is ${better ? "better" : "worse"} than the other, beyond noise.${note}`,
+    text: better ? t("verdict.better", { p: formatP(p), note }) : t("verdict.worse", { p: formatP(p), note }),
   };
 }
 
@@ -127,8 +133,28 @@ export function deltaPts(a: number | null | undefined, b: number | null | undefi
   return Math.round((a - b) * 10) / 10;
 }
 
-export function formatDelta(d: number): string {
-  return `${d > 0 ? "+" : ""}${d.toFixed(1)} pts`;
+export function formatDelta(d: number, t: TFunction<"quality"> = EN): string {
+  return t("delta", { delta: `${d > 0 ? "+" : ""}${d.toFixed(1)}` });
+}
+
+/** Stored suite / scoring versions; runs saved before they existed were version 1 (as in shared/qualityBench.js). */
+function versionsOf(run: QualityBenchJob | null): { suite: number; scoring: number } {
+  const c = (run?.config ?? {}) as { suiteVersion?: unknown; scoringVersion?: unknown };
+  const v = (x: unknown) => (Number.isFinite(Number(x)) && Number(x) > 0 ? Number(x) : 1);
+  return { suite: v(c.suiteVersion), scoring: v(c.scoringVersion) };
+}
+
+/**
+ * Why two runs cannot be paired, in the UI language. Mirrors checkQualityComparable's reasons
+ * (whose English text is shared with the server and stays unchanged there).
+ */
+export function comparableReason(t: TFunction<"quality">, a: QualityBenchJob | null, b: QualityBenchJob | null): string | null {
+  if (!a || !b) return null;
+  const va = versionsOf(a);
+  const vb = versionsOf(b);
+  if (va.suite !== vb.suite) return t("compare.suiteMismatch", { a: va.suite, b: vb.suite });
+  if (va.scoring !== vb.scoring) return t("compare.scoringMismatch", { a: va.scoring, b: vb.scoring });
+  return null;
 }
 
 /**

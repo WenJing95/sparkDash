@@ -1,0 +1,257 @@
+{
+  "cat": {
+    "qa": "问答",
+    "reason": "推理",
+    "arith": "连续算术",
+    "track": "状态跟踪",
+    "gsm8k": "GSM8K",
+    "mmlu": "MMLU",
+    "follow": "指令遵循",
+    "long": "长上下文记忆"
+  },
+  "hint": {
+    "qa": "简短的事实和算术题：乘法、字符串、日期、最小公倍数。",
+    "reason": "多步应用题，答案包含两个数。",
+    "arith": "十步连续算术。",
+    "track": "代币转移故事，每个含 25 个事件。",
+    "gsm8k": "来自公开 GSM8K 测试集的小学数学题（固定抽样）。",
+    "mmlu": "来自公开 MMLU 测试集的单选题，57 个学科各 5 道。",
+    "follow": "带可验证格式规则的提示词，由代码检查，不用评审模型。",
+    "long": "大海捞针式回忆：16 个编号，其中 4 个在文末被更正。逐个运行。"
+  },
+  "info": {
+    "qa": {
+      "measures": "在可核对答案的简短问题上的基本准确率：算术、字符串、日期。用于快速检查模型没有严重损坏（量化或 KV 缓存格式出问题时，最先在这里体现）。",
+      "how": "150 道简短问题：30 道固定题，加上用固定种子生成的 120 道（乘法、加减、反转字符串、数字母、排序、二进制、日期推算、最小公倍数）。模型直接作答，关闭思考。",
+      "scoring": "回复必须明确给出答案，只提到答案不算。数字：回复中最后一个数字必须是答案（\"1391\" 或 \"391 or 5\" 判为不通过）。日期：取最后一个日期。排序列表：取最后的几个数字，顺序须一致。单词和反转字符串：短回复中以完整单词出现，或较长回复以它结尾。先给出正确数字又自行改口，或对单词含糊其辞（\"not Canberra\"）的，判为不通过。请求错误或超时不计分。",
+      "settings": "关闭思考 · 每次回答至少 64 个 Token · 速度快。"
+    },
+    "reason": {
+      "measures": "多步推理：在一段故事中准确跟踪多个数量，并按顺序完成计算。",
+      "how": "40 道应用题。三个人各持有一些物品，相互转交，一人丢失一部分，一人数量翻倍，最后全部合并并分装到盒子里。问题要求给出两个数：剩余数量和每盒数量。",
+      "scoring": "最终回答（不含推理过程）的最后一行必须是 'Answer: <left over>, <per box>'。两个数都必须完全正确。",
+      "settings": "开启思考 · 每次回答最多 8192 个 Token · 在思考模型上较慢。"
+    },
+    "arith": {
+      "measures": "长链条上的精确计算：任何一步出错，最终结果都会错。",
+      "how": "40 条运算链：从一个三位数开始，按顺序执行 10 次运算（乘、加、减、取余后加 1000、除法向下取整）。所有数始终为整数。",
+      "scoring": "最后一行 'Answer: <number>' 必须等于正确结果（允许 Markdown 格式和千分位逗号）。",
+      "settings": "开启思考 · 每次回答最多 12288 个 Token · 速度慢。"
+    },
+    "track": {
+      "measures": "在一长串细小变化中准确跟踪状态，类似在程序中跟踪变量。",
+      "how": "40 个故事，每个有五个人，各自初始持有一些代币，随后发生 25 个事件：给别人一些、捡到几个，或给出一半（向下取整）。问题是某个人最后有多少代币。",
+      "scoring": "最后一行 'Answer: <number>' 必须完全正确。",
+      "settings": "开启思考 · 每次回答最多 12288 个 Token · 速度慢。"
+    },
+    "gsm8k": {
+      "measures": "小学数学应用题，即公开的 GSM8K 基准测试，结果可与公开数据对照参考（仅为近似，见下文）。",
+      "how": "用固定种子从 GSM8K 测试集（MIT 许可）中一次性抽取 200 道题。模型逐步求解每道题，并在最后给出答案。",
+      "scoring": "最后一行 'Answer: <number>'（大小写不限）必须等于数据集中的最终答案。允许 $ 符号、千分位逗号、% 符号或数字后的单位（\"18 dollars\"）；出现第二个数值或含糊表述则不通过。",
+      "example": "一道真实的 GSM8K 题目，例如购物找零或路程时间类应用题，后接“{{prompt}}”",
+      "settings": "开启思考 · 每次回答最多 8192 个 Token。只抽样 200 道而非全部 1,319 道，单次得分的误差约为 ±4–7 个百分点（95% 置信）；较小的差异请用配对比较判断，也不要与公开的 GSM8K 数据直接比较。"
+    },
+    "mmlu": {
+      "measures": "覆盖 57 个学科（法律、医学、数学、历史、计算机科学等）的广泛知识和考试式推理，即公开的 MMLU 基准测试。",
+      "how": "285 道单选题：用固定种子从 MMLU 测试集（MIT 许可）中一次性抽取，57 个学科各 5 道。每题有 A 到 D 四个选项。",
+      "scoring": "最后一行 'Answer: <letter>'（大小写不限；字母后带文字如 \"B. Paris\" 可以，\"B or C\" 不行），或只包含字母的回复，必须与正确选项一致。",
+      "settings": "关闭思考 · 每次回答最多 1,024 个 Token · 速度快。只有 285 道题，单次得分的误差约为 ±5 个百分点（95% 置信）；较小的差异请用配对比较判断，也不要与公开的 few-shot MMLU 数据直接比较。"
+    },
+    "follow": {
+      "measures": "严格遵循格式指令的能力，这类问题会导致解析模型输出的流程出错。参考了 IFEval。",
+      "how": "40 个简短写作任务，每个带 2 到 4 条可验证规则，例如固定数量的项目符号、全部小写或全部大写、字数要求、必须使用或禁止使用的词、不用逗号、用 <<双尖括号>> 包裹的标题，或固定的结尾语。",
+      "scoring": "每条规则都由代码检查，不借助其他模型。只有满足全部规则，任务才算通过。",
+      "settings": "关闭思考 · 每次回答最多 1024 个 Token · 速度快。默认不选，以便与旧的总分保持可比。"
+    },
+    "long": {
+      "measures": "在长文档中记住并更新事实：模型能否在很长的上下文深处找到最新值，而不是过时的旧值。",
+      "how": "一段很长的填充文本，其中分散着 16 条“Remember this: the code for <animal> is <5 digits>”事实，其中 4 条在接近末尾处被更正。模型需要给出每种动物的当前编号。上下文长度（8k 到 256k）和每个长度的题数由你选择。",
+      "scoring": "16 个最新编号全部正确才算通过。已被更正却回答了旧值的编号记为过时。",
+      "settings": "关闭思考 · 逐个顺序运行 · 长度较大时可能需要数分钟，超出模型上下文的长度会被跳过。"
+    }
+  },
+  "status": {
+    "running": "运行中",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消"
+  },
+  "shareStatus": {
+    "running": "运行中",
+    "completed": "已完成",
+    "failed": "失败",
+    "cancelled": "已取消"
+  },
+  "run": {
+    "unknownModel": "未知模型",
+    "port": "端口 {{port}}",
+    "thisRun": "本次运行",
+    "otherRun": "对比运行",
+    "cancel": "取消运行",
+    "starting": "正在启动…",
+    "start": "运行质量测试"
+  },
+  "notes": {
+    "keys": "编号 {{found}}/{{total}}",
+    "stale": "{{count}} 个过时值",
+    "meanTokens": "平均 {{tokens}} tok",
+    "hitMax": "{{count}} 次达到 max_tokens",
+    "errors_one": "{{count}} 次请求错误",
+    "errors_other": "{{count}} 次请求错误"
+  },
+  "compare": {
+    "noDiscordant": "没有结果不一致的题目",
+    "withinNoise": "差异在噪声范围内",
+    "significant": "差异显著（p {{p}}）",
+    "suiteMismatch": "这两次运行使用了不同的题集（题集 v{{a}} 与 v{{b}}），相同 ID 的题目并不是同一道题。请重新运行其中一次后再比较。",
+    "scoringMismatch": "这两次运行使用了不同的评分规则（评分规则 v{{a}} 与 v{{b}}），一次中的通过不等于另一次中的通过。请重新运行其中一次后再比较。"
+  },
+  "verdict": {
+    "same": "两次运行在所有共同题目上的结果相同。{{note}}",
+    "noise": "McNemar p = {{p}}，差异在噪声范围内。{{note}}",
+    "better": "McNemar p = {{p}}，本次运行优于对比运行，差异超出噪声范围。{{note}}",
+    "worse": "McNemar p = {{p}}，本次运行不如对比运行，差异超出噪声范围。{{note}}",
+    "excluded_one": "已排除 {{count}} 对（其中一次运行出现请求错误或超时）。",
+    "excluded_other": "已排除 {{count}} 对（其中一次运行出现请求错误或超时）。"
+  },
+  "delta": "{{delta}} 个百分点",
+  "share": {
+    "header": "{{model}} | 质量测试",
+    "headerLabeled": "{{model}} [{{label}}] | 质量测试",
+    "overall": "总分 {{pct}}（各分类得分率的平均值）",
+    "skipped": "已跳过的长上下文长度（超出上下文窗口）：{{sizes}}",
+    "comparedWith": "对比对象：{{run}}",
+    "overallVerdict": "总体：{{text}}",
+    "compareRow": "{{name}} {{pctA}} vs {{pctB}}  相同 {{identical}}/{{paired}}  仅本次通过 {{onlyA}}  仅对比运行通过 {{onlyB}}  p={{p}}  {{verdict}}",
+    "footer": "temp 0 · 固定种子 · 题集 v{{suite}}{{scoring}} · {{status}}，用时 {{duration}}",
+    "footerScoring": " · 评分规则 v{{version}}"
+  },
+  "table": {
+    "category": "分类",
+    "score": "得分",
+    "notes": "备注"
+  },
+  "score": {
+    "overall": "总分",
+    "overallThisRun": "总分 · 本次运行",
+    "deltaVsOther": "与对比运行相比 {{delta}}",
+    "sameVsOther": "与对比运行得分相同",
+    "sharedCategories_one": " · 共同分类 {{count}} 个",
+    "sharedCategories_other": " · 共同分类 {{count}} 个",
+    "hint": "{{categories}} 个分类得分的平均值 · 共 {{items}} 道题",
+    "runA": "A · {{name}}",
+    "runB": "B · {{name}}"
+  },
+  "bars": {
+    "title": "各分类得分",
+    "runA": "运行 A",
+    "runB": "运行 B",
+    "items": "{{passed}}/{{total}} 道题",
+    "compareNote": "回复相同 {{identical}}/{{paired}} · 仅本次通过 {{onlyA}} · 仅对比运行通过 {{onlyB}} · p {{p}} · {{verdict}}"
+  },
+  "disagree": {
+    "title": "两次运行结果不一致的题目",
+    "count": "· {{count}} / {{paired}}",
+    "tag": "仅 A 通过 {{onlyA}} · 仅 B 通过 {{onlyB}}",
+    "empty": "两次运行通过和未通过的题目完全相同。",
+    "item": "题目",
+    "runADetail": "运行 A 详情",
+    "pass": "✓ 通过",
+    "fail": "✕ 未通过"
+  },
+  "items": {
+    "summary": "逐题结果（{{count}}）",
+    "all": "全部",
+    "failed": "未通过",
+    "id": "ID",
+    "ok": "结果",
+    "reply": "回复",
+    "errorTitle": "请求错误，不计分",
+    "err": "错误",
+    "hitMax": "达到 max_tokens"
+  },
+  "errors": {
+    "interrupted": "测试已中断：运行期间服务器重启",
+    "noLongSize": "请至少选择一个该模型能容纳的长上下文长度"
+  },
+  "confirmDelete": "要从历史记录中删除这次运行吗？此操作无法撤销。",
+  "clear": {
+    "all": "清空所有端口",
+    "port": "清空端口 {{port}}",
+    "allTitle": "清空这台设备在所有 LLM 端口上保存的全部质量测试运行记录",
+    "portTitle": "仅清空端口 {{port}} 保存的质量测试运行记录"
+  },
+  "config": {
+    "categories": "测试分类",
+    "selectCategories": "选择分类",
+    "defaults": "默认",
+    "selectAll": "全选",
+    "hint": "题集固定、种子固定、temperature 为 0：每次运行的题目都相同，因此可以逐题配对比较。",
+    "optional": "可选",
+    "perSize": "每个长度 {{count}} 道",
+    "items": "{{count}} 道题",
+    "thinkingOn": "开启思考",
+    "hideDetails": "收起详情",
+    "howItWorks": "工作原理",
+    "infoRegion": "{{name}}的工作原理",
+    "infoTitle": "{{name}}：工作原理",
+    "close": "关闭",
+    "measures": "测量内容",
+    "sends": "发送内容",
+    "scoring": "评分方式",
+    "settings": "设置与开销",
+    "example": "示例（与实际提示词形式相同）",
+    "longSizes": "长上下文长度",
+    "contextLimit": "模型上下文为 {{size}}，更大的长度已禁用。",
+    "largeSlow": "长度较大时，每道题可能需要数分钟。",
+    "itemsPerSize": "每个长度的题数",
+    "selected": "已选 {{count}} 项",
+    "requests": "约 {{count}} 次请求",
+    "concurrency": "并发数",
+    "concurrencyTitle": "同时发送给模型的题目数量",
+    "label": "运行标签",
+    "labelPlaceholder": "例如 fp4 KV"
+  },
+  "progress": {
+    "running": "运行中",
+    "runningCategory": "运行中 · {{category}} {{done}}/{{total}}",
+    "aria": "质量测试进度",
+    "valueText": "{{done}} / {{total}} 道题"
+  },
+  "results": {
+    "compareWith": "对比对象",
+    "pickRun": "— 选择之前的一次运行 —",
+    "noShared": "这两次运行没有共同的题目。",
+    "skipped": "已跳过超出模型上下文的长度：{{sizes}}"
+  },
+  "legend": {
+    "score": "得分",
+    "scoreText": "：通过的题目数。",
+    "pText": "：只对仅有一次运行答对的题目做精确 McNemar 检验；p ≥ 0.05 表示差异在噪声范围内。请求错误或超时的题目不计分，也不参与比较。"
+  },
+  "page": {
+    "loading": "正在加载上次结果…",
+    "progress": "进度",
+    "results": "结果",
+    "emptyTitle": "暂无运行记录",
+    "emptyBody": "选择要评分的分类，为这次运行填写标签（例如量化方式或 KV 缓存格式），然后运行。题集固定且使用固定种子，任意两次运行都可以逐题比较。",
+    "history": "历史记录 · {{count}}",
+    "show": "显示",
+    "historyScope": "历史记录范围",
+    "allPorts": "所有端口",
+    "port": "端口 {{port}}",
+    "portSelected": "端口 {{port}}（当前）",
+    "labelHeader": "标签"
+  },
+  "modal": {
+    "closeDialog": "关闭对话框",
+    "title": "质量测试",
+    "port": "端口 {{port}}",
+    "close": "关闭",
+    "cancel": "取消",
+    "deleteTitle": "从历史记录中删除这次运行，保留其他运行",
+    "deleteRun": "删除运行",
+    "done": "完成",
+    "runAgain": "再次运行"
+  }
+}

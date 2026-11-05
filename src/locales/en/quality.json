@@ -1,0 +1,257 @@
+{
+  "cat": {
+    "qa": "QA",
+    "reason": "Reasoning",
+    "arith": "Arithmetic chain",
+    "track": "State tracking",
+    "gsm8k": "GSM8K",
+    "mmlu": "MMLU",
+    "follow": "Instruction following",
+    "long": "Long-context recall"
+  },
+  "hint": {
+    "qa": "Short factual and arithmetic questions: multiplication, strings, dates, LCM.",
+    "reason": "Multi-step word problems with a two-part answer.",
+    "arith": "Ten-step arithmetic chains.",
+    "track": "Token-transfer stories, 25 events each.",
+    "gsm8k": "Grade-school maths from the public GSM8K test set (fixed sample).",
+    "mmlu": "Multiple choice from the public MMLU test set, 5 per subject across 57 subjects.",
+    "follow": "Prompts with verifiable formatting rules, checked by code, not a judge.",
+    "long": "Needle recall: 16 codes, 4 corrected late in the text. Sequential."
+  },
+  "info": {
+    "qa": {
+      "measures": "Basic accuracy on short, checkable questions: arithmetic, strings, dates. A quick sanity check that nothing is badly broken (a bad quantisation or KV-cache format shows up here first).",
+      "how": "150 short questions: 30 fixed ones plus 120 generated from a fixed seed (multiplication, add/subtract, reversing a string, counting letters, sorting, binary, date offsets, least common multiple). The model answers directly, with thinking off.",
+      "scoring": "The reply has to commit to the answer, not just mention it. Numbers: the last number in the reply must be the answer (\"1391\" or \"391 or 5\" fail). Dates: the last date. Sorted lists: the last numbers, in order. Words and reversed strings: the answer as a whole word in a short reply, or a longer reply that ends on it. A reply that leads with the right number and then corrects itself, or hedges around the word (\"not Canberra\"), fails. A request error or timeout is not scored.",
+      "settings": "Thinking off · at least 64 tokens per answer · fast."
+    },
+    "reason": {
+      "measures": "Multi-step reasoning: keeping several quantities straight through a story and doing the arithmetic in order.",
+      "how": "40 word problems. Three people hold items, hand some over, one loses some, one doubles theirs, then everything is pooled and split into boxes. The question asks for two numbers: what is left over and what each box holds.",
+      "scoring": "The last line must be 'Answer: <left over>, <per box>' in the final answer (not the reasoning). Both numbers must be exactly right.",
+      "settings": "Thinking on · up to 8192 tokens per answer · slower on thinking models."
+    },
+    "arith": {
+      "measures": "Exact arithmetic over a long chain, where one slip anywhere makes the final number wrong.",
+      "how": "40 chains: start from a 3-digit number and apply 10 operations in order (multiply, add, subtract, remainder then add 1000, divide rounding down). Every number stays a whole number.",
+      "scoring": "The last 'Answer: <number>' line must equal the true result (markdown and thousands commas are accepted).",
+      "settings": "Thinking on · up to 12288 tokens per answer · slow."
+    },
+    "track": {
+      "measures": "Keeping state straight over a long sequence of small changes, like tracking variables through a program.",
+      "how": "40 stories with five people who each start with some tokens, followed by 25 events: gives some to another, finds a few, or gives half (rounded down). The question is how many tokens one person has at the end.",
+      "scoring": "The last 'Answer: <number>' line must be exactly right.",
+      "settings": "Thinking on · up to 12288 tokens per answer · slow."
+    },
+    "gsm8k": {
+      "measures": "Grade-school maths word problems, the public GSM8K benchmark, so results can be read next to published numbers (as an approximation, see below).",
+      "how": "200 problems drawn once, with a fixed seed, from the GSM8K test set (MIT-licensed). The model solves each step by step and ends with its answer.",
+      "scoring": "The last 'Answer: <number>' line (any capitalisation) must equal the dataset's final answer. $ signs, thousands commas, a % sign or a unit after the number (\"18 dollars\") are fine; a second value or a hedge is not.",
+      "example": "A real GSM8K problem, e.g. a shop-and-change or distance-and-time story, followed by “{{prompt}}”",
+      "settings": "Thinking on · up to 8192 tokens per answer. A sample of 200, not all 1,319, so a single score is only good to about ±4–7 points (95%); use the paired comparison for small differences, and do not compare with published GSM8K numbers."
+    },
+    "mmlu": {
+      "measures": "Broad knowledge and exam-style reasoning across 57 subjects (law, medicine, maths, history, computer science and more), the public MMLU benchmark.",
+      "how": "285 multiple-choice questions: 5 from each of the 57 subjects, drawn once with a fixed seed from the MMLU test set (MIT-licensed). Each shows four options A to D.",
+      "scoring": "The last 'Answer: <letter>' line (any capitalisation; text after the letter such as \"B. Paris\" is fine, \"B or C\" is not), or a reply that is just the letter, must match the correct option.",
+      "settings": "Thinking off · up to 1,024 tokens per answer · quick. 285 questions, so a single score is only good to about ±5 points (95%); use the paired comparison for small differences, and do not compare with published few-shot MMLU numbers."
+    },
+    "follow": {
+      "measures": "Following exact formatting instructions, the kind of thing that breaks pipelines that parse a model's output. Inspired by IFEval.",
+      "how": "40 short writing tasks, each with 2 to 4 verifiable rules such as an exact number of bullet points, all lowercase or all capitals, a word count, required or forbidden words, no commas, a title in <<double brackets>>, or an exact closing phrase.",
+      "scoring": "Every rule is checked by code, not by another model. A task passes only when all of its rules are met.",
+      "settings": "Thinking off · up to 1024 tokens per answer · quick. Off by default so older overall scores stay comparable."
+    },
+    "long": {
+      "measures": "Remembering and updating facts in a long document: whether the model finds the latest value, not a stale one, deep in a large context.",
+      "how": "A long filler text with 16 “Remember this: the code for <animal> is <5 digits>” facts spread through it. Four of them are corrected near the end. The model is asked for the current code of every animal. You choose the context sizes (8k up to 256k) and how many items per size.",
+      "scoring": "Passes when all 16 latest codes are right. A code that was corrected but answered with its old value counts as stale.",
+      "settings": "Thinking off · sequential, one at a time · can take many minutes at large sizes, and sizes that do not fit the model's context are skipped."
+    }
+  },
+  "status": {
+    "running": "Running",
+    "completed": "Completed",
+    "failed": "Failed",
+    "cancelled": "Cancelled"
+  },
+  "shareStatus": {
+    "running": "running",
+    "completed": "completed",
+    "failed": "failed",
+    "cancelled": "cancelled"
+  },
+  "run": {
+    "unknownModel": "unknown model",
+    "port": "port {{port}}",
+    "thisRun": "this run",
+    "otherRun": "other run",
+    "cancel": "Cancel run",
+    "starting": "Starting…",
+    "start": "Run quality bench"
+  },
+  "notes": {
+    "keys": "keys {{found}}/{{total}}",
+    "stale": "{{count}} stale",
+    "meanTokens": "mean {{tokens}} tok",
+    "hitMax": "{{count}} hit max_tokens",
+    "errors_one": "{{count}} request error",
+    "errors_other": "{{count}} request errors"
+  },
+  "compare": {
+    "noDiscordant": "no discordant items",
+    "withinNoise": "difference within noise",
+    "significant": "significant (p {{p}})",
+    "suiteMismatch": "These runs used different item sets (suite v{{a}} vs v{{b}}), so items with the same id are not the same question. Re-run one of them to compare.",
+    "scoringMismatch": "These runs were scored by different rules (scoring v{{a}} vs v{{b}}), so a pass in one is not a pass in the other. Re-run one of them to compare."
+  },
+  "verdict": {
+    "same": "Both runs scored every shared item the same.{{note}}",
+    "noise": "McNemar p = {{p}}. The difference is within noise.{{note}}",
+    "better": "McNemar p = {{p}}. This run is better than the other, beyond noise.{{note}}",
+    "worse": "McNemar p = {{p}}. This run is worse than the other, beyond noise.{{note}}",
+    "excluded_one": " {{count}} pair left out (request error or timeout in one run).",
+    "excluded_other": " {{count}} pairs left out (request error or timeout in one run)."
+  },
+  "delta": "{{delta}} pts",
+  "share": {
+    "header": "{{model}} | quality bench",
+    "headerLabeled": "{{model}} [{{label}}] | quality bench",
+    "overall": "Overall {{pct}} (mean of category %)",
+    "skipped": "Long sizes skipped (above context): {{sizes}}",
+    "comparedWith": "Compared with: {{run}}",
+    "overallVerdict": "Overall: {{text}}",
+    "compareRow": "{{name}} {{pctA}} vs {{pctB}}  identical {{identical}}/{{paired}}  only-this {{onlyA}}  only-other {{onlyB}}  p={{p}}  {{verdict}}",
+    "footer": "temp 0 · seed fixed · suite v{{suite}}{{scoring}} · {{status}} in {{duration}}",
+    "footerScoring": " · scoring v{{version}}"
+  },
+  "table": {
+    "category": "Category",
+    "score": "Score",
+    "notes": "Notes"
+  },
+  "score": {
+    "overall": "Overall",
+    "overallThisRun": "Overall · this run",
+    "deltaVsOther": "{{delta}} vs other run",
+    "sameVsOther": "Same score vs other run",
+    "sharedCategories_one": " · {{count}} shared category",
+    "sharedCategories_other": " · {{count}} shared categories",
+    "hint": "Mean of {{categories}} category scores · {{items}} items",
+    "runA": "A · {{name}}",
+    "runB": "B · {{name}}"
+  },
+  "bars": {
+    "title": "Score by category",
+    "runA": "Run A",
+    "runB": "Run B",
+    "items": "{{passed}}/{{total}} items",
+    "compareNote": "same reply {{identical}}/{{paired}} · only this {{onlyA}} · only other {{onlyB}} · p {{p}} · {{verdict}}"
+  },
+  "disagree": {
+    "title": "Items where the runs disagree",
+    "count": "· {{count}} of {{paired}}",
+    "tag": "A only {{onlyA}} · B only {{onlyB}}",
+    "empty": "Both runs passed and failed the same items.",
+    "item": "Item",
+    "runADetail": "Run A detail",
+    "pass": "✓ pass",
+    "fail": "✕ fail"
+  },
+  "items": {
+    "summary": "Per-item results ({{count}})",
+    "all": "all",
+    "failed": "failed",
+    "id": "Id",
+    "ok": "Ok",
+    "reply": "Reply",
+    "errorTitle": "Request error — not scored",
+    "err": "err",
+    "hitMax": "hit max_tokens"
+  },
+  "errors": {
+    "interrupted": "Benchmark interrupted — server restarted during the run",
+    "noLongSize": "Select at least one long-context size that fits this model"
+  },
+  "confirmDelete": "Delete this run from the history? This cannot be undone.",
+  "clear": {
+    "all": "Clear all ports",
+    "port": "Clear port {{port}}",
+    "allTitle": "Clear every saved quality run on this unit, on all LLM ports",
+    "portTitle": "Clear the saved quality runs of port {{port}} only"
+  },
+  "config": {
+    "categories": "Categories",
+    "selectCategories": "Select categories",
+    "defaults": "Defaults",
+    "selectAll": "Select all",
+    "hint": "Fixed, seeded suite at temperature 0 — the same items every run, so runs pair item by item.",
+    "optional": "optional",
+    "perSize": "{{count}} per size",
+    "items": "{{count}} items",
+    "thinkingOn": "thinking on",
+    "hideDetails": "Hide details",
+    "howItWorks": "How it works",
+    "infoRegion": "How {{name}} works",
+    "infoTitle": "{{name}}: how it works",
+    "close": "Close",
+    "measures": "What it measures",
+    "sends": "What it sends",
+    "scoring": "How it is scored",
+    "settings": "Settings and cost",
+    "example": "Example (the shape of the real prompts)",
+    "longSizes": "Long-context sizes",
+    "contextLimit": "Model context {{size}} — larger sizes are disabled.",
+    "largeSlow": "Large sizes can take many minutes per item.",
+    "itemsPerSize": "Items per size",
+    "selected": "{{count}} selected",
+    "requests": "about {{count}} requests",
+    "concurrency": "Concurrency",
+    "concurrencyTitle": "How many questions are sent to the model at the same time",
+    "label": "Run label",
+    "labelPlaceholder": "e.g. fp4 KV"
+  },
+  "progress": {
+    "running": "Running",
+    "runningCategory": "Running · {{category}} {{done}}/{{total}}",
+    "aria": "Quality benchmark progress",
+    "valueText": "{{done}} of {{total}} items"
+  },
+  "results": {
+    "compareWith": "Compare with",
+    "pickRun": "— pick a previous run —",
+    "noShared": "No shared items between these runs.",
+    "skipped": "Skipped long sizes above the model context: {{sizes}}"
+  },
+  "legend": {
+    "score": "Score",
+    "scoreText": " — items passed. ",
+    "pText": " — exact McNemar test on items only one run got right; p ≥ 0.05 means the difference is within noise. Items with a request error or timeout are not scored and are left out of the comparison."
+  },
+  "page": {
+    "loading": "Loading last results…",
+    "progress": "Progress",
+    "results": "Results",
+    "emptyTitle": "No runs yet",
+    "emptyBody": "Pick the categories to score, give the run a label (for example the quantisation or KV-cache format) and run. The suite is fixed and seeded, so any two runs can be compared item by item.",
+    "history": "History · {{count}}",
+    "show": "Show",
+    "historyScope": "History scope",
+    "allPorts": "All ports",
+    "port": "Port {{port}}",
+    "portSelected": "Port {{port}} (selected)",
+    "labelHeader": "Label"
+  },
+  "modal": {
+    "closeDialog": "Close dialog",
+    "title": "Quality benchmark",
+    "port": "Port {{port}}",
+    "close": "Close",
+    "cancel": "Cancel",
+    "deleteTitle": "Delete this run from the history, keeping the other runs",
+    "deleteRun": "Delete run",
+    "done": "Done",
+    "runAgain": "Run again"
+  }
+}

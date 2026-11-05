@@ -9,6 +9,8 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { ChevronDownIcon } from "../ui/icons";
 import { CardPreview } from "./CardPreview";
 import { shareCardFileName, type ShareCardModel } from "./benchShareCard";
@@ -28,21 +30,21 @@ interface BenchCopyButtonProps {
   onError: (message: string) => void;
 }
 
-function stateLabel(state: CopyState, shareImage: boolean): string {
+function stateLabel(state: CopyState, shareImage: boolean, t: TFunction<"benchRun">): string {
   switch (state) {
     case "working":
-      return "Copying…";
+      return t("copy.copying");
     case "image":
-      return "Image copied!";
+      return t("copy.imageCopied");
     case "downloaded":
-      return "PNG saved";
+      return t("copy.pngSaved");
     case "shown":
-      return "Card shown";
+      return t("copy.cardShown");
     case "text":
       // Off, this is the copy button as it always was.
-      return shareImage ? "Copied text!" : "Copied!";
+      return shareImage ? t("copy.copiedText") : t("copy.copied");
     default:
-      return "Copy results";
+      return t("copy.copyResults");
   }
 }
 
@@ -59,6 +61,7 @@ export function BenchCopyButton({
   shareImage,
   onError,
 }: BenchCopyButtonProps) {
+  const { t } = useTranslation("benchRun");
   const [state, setState] = useState<CopyState>("idle");
   /** Secure context? Without it the card can only be downloaded. */
   const imageClipboard = shareImage && canCopyImages();
@@ -163,7 +166,7 @@ export function BenchCopyButton({
       await copyTextOnly(text);
       flash("text");
     } catch {
-      onError("Could not copy results to clipboard");
+      onError(t("copy.errorText"));
     }
   };
 
@@ -183,7 +186,7 @@ export function BenchCopyButton({
     else if (outcome === "downloaded") flash("downloaded");
     else {
       setState("idle");
-      onError("Could not copy the image to the clipboard");
+      onError(t("copy.errorImage"));
     }
   };
 
@@ -201,7 +204,7 @@ export function BenchCopyButton({
     const url = await renderCardObjectUrl(buildCard());
     if (!url) {
       setState("idle");
-      onError("Could not render the card image");
+      onError(t("copy.errorRender"));
       return;
     }
     setPreview(url);
@@ -243,9 +246,9 @@ export function BenchCopyButton({
         className="bench-btn bench-btn--ghost"
         onClick={() => void copyText()}
         disabled={state === "working"}
-        title="Copy a plain-text summary to the clipboard"
+        title={t("copy.plainTitle")}
       >
-        {stateLabel(state, shareImage)}
+        {stateLabel(state, shareImage, t)}
       </button>
     );
   }
@@ -263,20 +266,20 @@ export function BenchCopyButton({
         className="bench-btn bench-btn--ghost"
         onClick={() => void copyText()}
         disabled={state === "working"}
-        title="Copy the results as plain text — the caret on the right copies the share-card image instead"
+        title={t("copy.splitTitle")}
       >
-        {stateLabel(state, shareImage)}
+        {stateLabel(state, shareImage, t)}
       </button>
       <button
         type="button"
         className="bench-btn bench-btn--ghost bench-copy-caret -ml-px px-1.5"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        aria-label="Copy format"
+        aria-label={t("copy.formatAria")}
         title={
           imageClipboard
-            ? "Copy as text or as an image"
-            : "Copy as text, or show or download the image"
+            ? t("copy.caretTitleImage")
+            : t("copy.caretTitleShow")
         }
         disabled={state === "working"}
         onMouseEnter={openMenu}
@@ -291,7 +294,7 @@ export function BenchCopyButton({
           <span
             ref={menuRef}
             role="menu"
-            aria-label="Copy format"
+            aria-label={t("copy.formatAria")}
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
             style={{
@@ -311,7 +314,7 @@ export function BenchCopyButton({
               className="block w-full rounded px-2 py-1.5 text-left text-[11px] text-muted transition-colors hover:bg-surface-hover hover:text-text"
               onClick={() => void copyText()}
             >
-              Copy as text
+              {t("copy.asText")}
             </button>
             {imageClipboard ? (
               <button
@@ -320,7 +323,7 @@ export function BenchCopyButton({
                 className="block w-full rounded px-2 py-1.5 text-left text-[11px] text-muted transition-colors hover:bg-surface-hover hover:text-text"
                 onClick={() => void copyImage()}
               >
-                Copy as image
+                {t("copy.asImage")}
               </button>
             ) : (
               <>
@@ -329,9 +332,9 @@ export function BenchCopyButton({
                   role="menuitem"
                   className="block w-full rounded px-2 py-1.5 text-left text-[11px] text-muted transition-colors hover:bg-surface-hover hover:text-text"
                   onClick={() => void showImage()}
-                  title="This page is served over http on a LAN address, where a page cannot write images to the clipboard. The card is shown as an image instead — right-click → Copy Image, or drag it into your post."
+                  title={t("copy.showCardTitle")}
                 >
-                  Show card
+                  {t("copy.showCard")}
                 </button>
                 <button
                   type="button"
@@ -339,7 +342,7 @@ export function BenchCopyButton({
                   className="block w-full rounded px-2 py-1.5 text-left text-[11px] text-muted transition-colors hover:bg-surface-hover hover:text-text"
                   onClick={() => void copyImage()}
                 >
-                  Download PNG
+                  {t("copy.downloadPng")}
                 </button>
               </>
             )}
@@ -350,12 +353,13 @@ export function BenchCopyButton({
         createPortal(
           <CardPreview
             url={preview}
-            label="Benchmark share card"
-            imgAlt="Benchmark result card — right-click to copy it"
+            label={t("copy.previewLabel")}
+            imgAlt={t("copy.previewAlt")}
             hint={
               <>
-                Right-click → <strong>Copy Image</strong>, or drag the card into your post. Browsers only let a page copy
-                images over HTTPS or localhost, so the card is shown here for your browser to copy.
+                {t("copy.hintBefore")}
+                <strong>{t("copy.hintCopyImage")}</strong>
+                {t("copy.hintAfter")}
               </>
             }
             onClose={closePreview}

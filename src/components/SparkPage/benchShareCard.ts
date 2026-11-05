@@ -8,16 +8,41 @@
  * function of the bench job, so every number and label is unit-testable
  * without a real canvas context.
  */
-import { decodeBenchSamplingLabel } from "./decodeSampling";
+import type { TFunction } from "i18next";
+import { i18n } from "../../i18n";
+import { decodeBenchSamplingText, decodeBenchTypeText } from "./decodeSampling";
 import { formatDuration } from "../../shared/formatDuration";
-import { decodeBenchTypeLabel } from "../../shared/llmPrompts.js";
 import { backendLabel } from "../../shared/llmBackends.js";
 import { formatContextSize } from "../../shared/prefillBench.js";
-import { QUALITY_CATEGORIES, QUALITY_CATEGORY_LABELS, checkQualityComparable } from "../../shared/qualityBench.js";
-import type { DecodeBenchJob, PrefillBenchJob, QualityBenchJob, ToolEvalRun } from "../../api/types";
+import { QUALITY_CATEGORIES, checkQualityComparable } from "../../shared/qualityBench.js";
+import type { DecodeBenchJob, PrefillBenchJob, QualityBenchJob, QualityCategory, ToolEvalRun } from "../../api/types";
 import { compareToolResults, configCaveats, type Delta as CompareDelta } from "../bench/tooleval/compare";
 import { scoreTier } from "../bench/tooleval/format";
 import { CATEGORY_NAMES, type NormToolResult } from "../bench/tooleval/normalize";
+
+/**
+ * Tool-eval words on the card (category names, tier names, setup caveats) stay in the tool's
+ * English for now; callers may already pass a toolEval `t`, which the Tool Eval change uses.
+ */
+function toolCategoryText(c: { id: string; name?: string | null }, _te: TFunction<"toolEval"> | undefined, fallback: string): string {
+  return c.name ?? CATEGORY_NAMES[c.id] ?? fallback;
+}
+
+/** The run's rating word: the tool's text, else the score tier. */
+function toolRatingText(data: NormToolResult, _te: TFunction<"toolEval"> | undefined): string {
+  const raw = data.rating?.replace(/[★☆]+/g, "").trim() || "";
+  if (raw) return raw;
+  return scoreTier(data.score)?.label ?? "";
+}
+
+/**
+ * The card's words follow the UI language. Callers pass the `t` they got from
+ * `useTranslation("benchRun")`; a caller that does not gets the active language,
+ * so a card is never in a different language from the page it was made on.
+ */
+function resolveT(t: TFunction<"benchRun"> | null | undefined): TFunction<"benchRun"> {
+  return t ?? i18n.getFixedT(null, "benchRun");
+}
 
 /** Fixed width; height grows with the number of result rows. */
 export const SHARE_CARD_WIDTH = 1200;
@@ -196,6 +221,8 @@ export interface ShareCardSource {
   sparkName?: string | null;
   /** Remote bench host (hostname / URL) instead of this Spark's LAN path. */
   remoteHost?: string | null;
+  /** Card wording; defaults to the active UI language. */
+  t?: TFunction<"benchRun">;
 }
 
 /** `2026-09-17` in local time. */
@@ -217,17 +244,19 @@ export function shareCardFileName(model: ShareCardModel, kind: "decode" | "prefi
 }
 
 export function shareCardStatus(
-  status: DecodeBenchJob["status"] | PrefillBenchJob["status"] | QualityBenchJob["status"]
+  status: DecodeBenchJob["status"] | PrefillBenchJob["status"] | QualityBenchJob["status"],
+  tIn?: TFunction<"benchRun">
 ): { label: string; tone: ShareCardTone } {
+  const t = resolveT(tIn);
   switch (status) {
     case "completed":
-      return { label: "COMPLETED", tone: "ok" };
+      return { label: t("card.status.completed"), tone: "ok" };
     case "running":
-      return { label: "RUNNING", tone: "warn" };
+      return { label: t("card.status.running"), tone: "warn" };
     case "failed":
-      return { label: "FAILED", tone: "bad" };
+      return { label: t("card.status.failed"), tone: "bad" };
     case "cancelled":
-      return { label: "CANCELLED", tone: "muted" };
+      return { label: t("card.status.cancelled"), tone: "muted" };
     default:
       return { label: String(status).toUpperCase(), tone: "muted" };
   }
@@ -258,7 +287,8 @@ export function shareCardChips(src: ShareCardSource): ShareCardChip[] {
 
 /** `Port 8888 · org/model`, or the remote host when the run used one. */
 export function shareCardSubtitle(src: ShareCardSource): string {
-  const target = src.remoteHost ? src.remoteHost : `Port ${src.llmPort}`;
+  const t = resolveT(src.t);
+  const target = src.remoteHost ? src.remoteHost : t("card.port", { port: src.llmPort });
   return src.modelId ? `${target} · ${src.modelId}` : target;
 }
 
@@ -271,6 +301,7 @@ export function buildDecodeShareCard(
   src: ShareCardSource,
   now: number = Date.now()
 ): ShareCardModel {
+  const t = resolveT(src.t);
   const rows = job.results
     .slice()
     .sort((a, b) => a.concurrency - b.concurrency)
@@ -281,8 +312,8 @@ export function buildDecodeShareCard(
       return {
         load: `×${r.concurrency}`,
         detail: failed
-          ? r.error || "failed"
-          : `TTFT ${formatTtft(r.meanTtftMs)} · ${r.streamsOk}/${streams} streams`,
+          ? r.error || t("card.decode.failed")
+          : t("card.decode.detail", { ttft: formatTtft(r.meanTtftMs), ok: r.streamsOk, total: streams }),
         primary: failed ? "—" : agg.toFixed(1),
         secondary: failed ? "—" : r.meanDecodeTps.toFixed(1),
         primaryUnit: "tok/s",
@@ -295,19 +326,21 @@ export function buildDecodeShareCard(
   return {
     brand: "sparkDash",
     host: src.sparkName || "",
-    title: "Decode benchmark",
+    title: t("card.decode.title"),
     subtitle: shareCardSubtitle(src),
     chips: shareCardChips(src),
-    status: shareCardStatus(job.status),
-    meta: `${decodeBenchTypeLabel(job.config?.promptType)} · ${job.config?.maxTokens ?? "?"} tok · ${decodeBenchSamplingLabel(job.config)}${
-      job.config?.contextTokens ? ` · ${formatContextSize(job.config.contextTokens)} start ctx` : ""
-    } · ${
-      concurrencies.length ? `${concurrencies.join(", ")} conc` : "—"
-    }${job.durationMs != null ? ` · ${formatDuration(job.durationMs)}` : ""}`,
-    columns: { load: "Load", primary: "Aggregate", secondary: "Stream" },
+    status: shareCardStatus(job.status, t),
+    meta: t("card.decode.meta", {
+      type: decodeBenchTypeText(job.config?.promptType, t),
+      maxTokens: job.config?.maxTokens ?? "?",
+      sampling: decodeBenchSamplingText(job.config, t),
+      ctx: job.config?.contextTokens ? t("card.decode.startCtx", { size: formatContextSize(job.config.contextTokens) }) : "",
+      concurrency: concurrencies.length ? t("card.decode.conc", { list: concurrencies.join(", ") }) : "—",
+      duration: job.durationMs != null ? ` · ${formatDuration(job.durationMs)}` : "",
+    }),
+    columns: { load: t("card.decode.colLoad"), primary: t("card.decode.colAggregate"), secondary: t("card.decode.colStream") },
     rows,
-    legend:
-      "Aggregate — total decode tok/s across all concurrent streams. Stream — per-stream average decode.",
+    legend: t("card.decode.legend"),
     footer: "github.com/MiaAI-Lab/sparkDash",
     generatedAt: now,
   };
@@ -322,20 +355,26 @@ export function buildPrefillShareCard(
   src: ShareCardSource,
   now: number = Date.now()
 ): ShareCardModel {
+  const t = resolveT(src.t);
   const rows = job.results
     .slice()
     .sort((a, b) => a.targetTokens - b.targetTokens)
     .map<ShareCardRow>((r) => {
       const failed = Boolean(r.error) || r.prefillTps <= 0;
       const partial = !failed && r.samples != null && r.samplesRequested != null && r.samples < r.samplesRequested;
-      const flags = [partial ? `${r.samples}/${r.samplesRequested} samples` : null, !failed && r.lowConfidence ? "low confidence" : null].filter(Boolean);
+      const flags = [
+        partial ? t("card.prefill.samples", { samples: r.samples, requested: r.samplesRequested }) : null,
+        !failed && r.lowConfidence ? t("card.prefill.lowConfidence") : null,
+      ].filter(Boolean);
       return {
         load: formatContextSize(r.targetTokens),
         detail: failed
-          ? r.error || "No prefill rate was measured"
-          : `TTFT ${formatTtft(r.ttftMs)} · ${
-              r.promptTokens > 0 ? `${r.promptTokens.toLocaleString("en-US")} tokens` : "—"
-            }${flags.length ? ` · ${flags.join(", ")}` : ""}`,
+          ? r.error || t("card.prefill.noRate")
+          : t("card.prefill.detail", {
+              ttft: formatTtft(r.ttftMs),
+              tokens: r.promptTokens > 0 ? t("card.prefill.tokens", { n: r.promptTokens.toLocaleString("en-US") }) : "—",
+              flags: flags.length ? t("card.prefill.flags", { list: flags.join(t("card.prefill.separator")) }) : "",
+            }),
         primary: failed ? "—" : r.prefillTps.toFixed(1),
         secondary: failed ? "—" : formatTtft(r.ttftMs),
         primaryUnit: "tok/s",
@@ -348,17 +387,16 @@ export function buildPrefillShareCard(
   return {
     brand: "sparkDash",
     host: src.sparkName || "",
-    title: "Prefill benchmark",
+    title: t("card.prefill.title"),
     subtitle: shareCardSubtitle(src),
     chips: shareCardChips(src),
-    status: shareCardStatus(job.status),
-    meta: `${sizes.length ? `${sizes.map(formatContextSize).join(", ")} ctx` : "—"}${
+    status: shareCardStatus(job.status, t),
+    meta: `${sizes.length ? t("card.prefill.meta", { sizes: sizes.map(formatContextSize).join(", ") }) : "—"}${
       job.durationMs != null ? ` · ${formatDuration(job.durationMs)}` : ""
     }`,
-    columns: { load: "Context", primary: "Prefill", secondary: "TTFT" },
+    columns: { load: t("card.prefill.colContext"), primary: t("card.prefill.colPrefill"), secondary: "TTFT" },
     rows,
-    legend:
-      "Prefill — server prompt timing, else tokens ÷ (TTFT − request overhead), cache hits excluded. TTFT — time to first token. Median-rate sample.",
+    legend: t("card.prefill.legend"),
     footer: "github.com/MiaAI-Lab/sparkDash",
     generatedAt: now,
   };
@@ -374,6 +412,7 @@ export function buildQualityShareCard(
   src: ShareCardSource,
   now: number = Date.now()
 ): ShareCardModel {
+  const t = resolveT(src.t);
   // Runs from different suite/scoring versions are not comparable: show the plain card.
   if (compare && !checkQualityComparable(job, compare).ok) compare = null;
   const rows: ShareCardRow[] = [];
@@ -383,12 +422,14 @@ export function buildQualityShareCard(
     const other = compare?.results?.categories?.[cat];
     const delta = s.pct != null && other?.pct != null ? Math.round((s.pct - other.pct) * 10) / 10 : null;
     rows.push({
-      load: QUALITY_CATEGORY_LABELS[cat],
-      detail: `${s.passed}/${s.scored ?? s.total} items${s.errors > 0 ? ` · ${s.errors} error${s.errors === 1 ? "" : "s"}` : ""}`,
+      load: qualityCategoryText(cat, t),
+      detail: `${t("card.quality.items", { passed: s.passed, total: s.scored ?? s.total })}${
+        s.errors > 0 ? t("card.quality.errors", { count: s.errors }) : ""
+      }`,
       primary: s.pct == null ? "—" : s.pct.toFixed(1),
       secondary: delta == null ? "" : `${delta > 0 ? "+" : ""}${delta.toFixed(1)}`,
       primaryUnit: "%",
-      secondaryUnit: delta == null ? "" : "pts",
+      secondaryUnit: delta == null ? "" : t("card.quality.pts"),
       tone: s.pct == null ? "bad" : delta != null && delta < 0 ? "warn" : "ok",
     });
   }
@@ -407,34 +448,64 @@ export function buildQualityShareCard(
   const catKeys = QUALITY_CATEGORIES.filter((c) => job.results?.categories?.[c]);
   const itemTotal = catKeys.reduce((n, c) => n + (job.results?.categories?.[c]?.total ?? 0), 0);
   const summary = [
-    `${tiles.length} ${tiles.length === 1 ? "category" : "categories"}`,
-    `${itemTotal.toLocaleString("en-US")} items`,
+    t("card.quality.categories", { count: tiles.length }),
+    t("card.quality.itemTotal", { n: itemTotal.toLocaleString("en-US") }),
     ...(job.durationMs != null ? [formatDuration(job.durationMs)] : []),
   ].join(" · ");
   return {
     quality: {
       overall: overall ?? null,
       modelName: src.modelId || "",
-      target: src.remoteHost ? src.remoteHost : `Port ${src.llmPort}`,
+      target: src.remoteHost ? src.remoteHost : t("card.port", { port: src.llmPort }),
       runLabel: job.config?.label || "",
       summary,
       tiles,
     },
     brand: "sparkDash",
     host: src.sparkName || "",
-    title: "Quality benchmark",
+    title: t("card.quality.title"),
     subtitle: shareCardSubtitle(src),
     chips: shareCardChips(src),
-    status: shareCardStatus(job.status),
-    meta: `Overall ${overall == null ? "—" : `${overall.toFixed(1)}%`}${job.config?.label ? ` · ${job.config.label}` : ""}${
-      job.durationMs != null ? ` · ${formatDuration(job.durationMs)}` : ""
-    }`,
-    columns: { load: "Category", primary: "Score", secondary: compare ? "vs other" : "" },
+    status: shareCardStatus(job.status, t),
+    meta: t("card.quality.meta", {
+      overall: overall == null ? "—" : `${overall.toFixed(1)}%`,
+      label: job.config?.label ? ` · ${job.config.label}` : "",
+      duration: job.durationMs != null ? ` · ${formatDuration(job.durationMs)}` : "",
+    }),
+    columns: {
+      load: t("card.quality.colCategory"),
+      primary: t("card.quality.colScore"),
+      secondary: compare ? t("card.quality.colVsOther") : "",
+    },
     rows,
-    legend: "Score — share of items passed. Temperature 0, fixed seed.",
+    legend: t("card.quality.legend"),
     footer: "github.com/MiaAI-Lab/sparkDash",
     generatedAt: now,
   };
+}
+
+/** Quality category name in the card's language. */
+function qualityCategoryText(cat: QualityCategory, t: TFunction<"benchRun">): string {
+  switch (cat) {
+    case "qa":
+      return t("card.quality.category.qa");
+    case "reason":
+      return t("card.quality.category.reason");
+    case "arith":
+      return t("card.quality.category.arith");
+    case "track":
+      return t("card.quality.category.track");
+    case "gsm8k":
+      return t("card.quality.category.gsm8k");
+    case "mmlu":
+      return t("card.quality.category.mmlu");
+    case "follow":
+      return t("card.quality.category.follow");
+    case "long":
+      return t("card.quality.category.long");
+    default:
+      return String(cat);
+  }
 }
 
 /** Score band → card tone, following the tool's tiers (75+ good, 60+ adequate, 40+ weak, below poor). */
@@ -447,16 +518,16 @@ function toolEvalTone(score: number | null | undefined): ShareCardTone {
 /** Most safety warnings the card lists; the rest become a "+N more" line. */
 const TOOL_EVAL_SAFETY_SHOWN = 3;
 
-function toolEvalStatus(status: ToolEvalRun["status"]): { label: string; tone: ShareCardTone } {
+function toolEvalStatus(status: ToolEvalRun["status"], t: TFunction<"benchRun">): { label: string; tone: ShareCardTone } {
   switch (status) {
     case "completed":
-      return { label: "COMPLETED", tone: "ok" };
+      return { label: t("card.status.completed"), tone: "ok" };
     case "running":
-      return { label: "RUNNING", tone: "warn" };
+      return { label: t("card.status.running"), tone: "warn" };
     case "failed":
-      return { label: "FAILED", tone: "bad" };
+      return { label: t("card.status.failed"), tone: "bad" };
     case "stopped":
-      return { label: "STOPPED", tone: "warn" };
+      return { label: t("card.status.stopped"), tone: "warn" };
     default:
       return { label: String(status).toUpperCase(), tone: "muted" };
   }
@@ -470,12 +541,13 @@ function toolEvalStatus(status: ToolEvalRun["status"]): { label: string; tone: S
 export function buildToolEvalShareCard(
   data: NormToolResult,
   run: Pick<ToolEvalRun, "status" | "startedAt" | "finishedAt" | "model">,
-  src: { sparkName?: string | null },
+  src: { sparkName?: string | null; t?: TFunction<"benchRun">; te?: TFunction<"toolEval"> },
   now: number = Date.now()
 ): ShareCardModel {
+  const t = resolveT(src.t);
   const tier = scoreTier(data.score);
   const ratingStars = (data.rating?.match(/★/g) ?? []).length || tier?.stars || 0;
-  const rating = data.rating?.replace(/[★☆]+/g, "").trim() || tier?.label || "";
+  const rating = toolRatingText(data, src.te);
   const done = data.counts.pass + data.counts.partial + data.counts.fail + data.counts.other;
   const total = data.total ?? done;
   const ms = run.finishedAt != null ? run.finishedAt - run.startedAt : null;
@@ -488,21 +560,21 @@ export function buildToolEvalShareCard(
   const modelName = data.model || run.model || "";
   const categories = data.categories.map<ShareCardToolEvalCategory>((c) => ({
     id: c.id,
-    name: c.name ?? CATEGORY_NAMES[c.id] ?? "Category",
+    name: toolCategoryText(c, src.te, t("card.toolEval.category")),
     pct: c.percent == null ? null : Math.max(0, Math.min(100, c.percent)),
     detail:
       c.points != null && c.maxPoints != null
-        ? `${Number(c.points.toFixed(1))}/${Number(c.maxPoints.toFixed(1))} pts`
+        ? t("card.toolEval.points", { points: Number(c.points.toFixed(1)), max: Number(c.maxPoints.toFixed(1)) })
         : "",
   }));
   const summary = [
-    `${total.toLocaleString("en-US")} ${total === 1 ? "scenario" : "scenarios"}`,
+    t("card.toolEval.scenarios", { count: total, formatted: total.toLocaleString("en-US") }),
     ...(ms != null && ms >= 0 ? [formatDuration(ms)] : []),
   ].join(" · ");
   const chips: ShareCardChip[] = [];
   if (data.backend) chips.push({ label: backendLabel(data.backend) || data.backend, tone: "accent" });
   if (data.safety.length) {
-    chips.push({ label: `${data.safety.length} safety ${data.safety.length === 1 ? "warning" : "warnings"}`, tone: "warn" });
+    chips.push({ label: t("card.toolEval.safety", { count: data.safety.length }), tone: "warn" });
   }
   return {
     toolEval: {
@@ -514,7 +586,7 @@ export function buildToolEvalShareCard(
       subline: [data.backend ? backendLabel(data.backend) || data.backend : "", data.version ? `tool-eval-bench ${data.version}` : ""]
         .filter(Boolean)
         .join(" · "),
-      stats: [stat("Deployability", data.deployability), stat("Responsiveness", data.responsiveness)],
+      stats: [stat(t("card.toolEval.deployability"), data.deployability), stat(t("card.toolEval.responsiveness"), data.responsiveness)],
       counts: { ...data.counts, total },
       summary,
       safety: data.safety.slice(0, TOOL_EVAL_SAFETY_SHOWN),
@@ -523,14 +595,18 @@ export function buildToolEvalShareCard(
     },
     brand: "sparkDash",
     host: src.sparkName || "",
-    title: "Tool Eval Bench",
+    title: t("card.toolEval.title"),
     subtitle: modelName,
     chips,
-    status: toolEvalStatus(run.status),
-    meta: `Score ${data.score == null ? "—" : data.score.toFixed(1)}${rating ? ` · ${rating}` : ""} · ${summary}`,
-    columns: { load: "Category", primary: "Score", secondary: "" },
+    status: toolEvalStatus(run.status, t),
+    meta: t("card.toolEval.meta", {
+      score: data.score == null ? "—" : data.score.toFixed(1),
+      rating: rating ? ` · ${rating}` : "",
+      summary,
+    }),
+    columns: { load: t("card.toolEval.colCategory"), primary: t("card.toolEval.colScore"), secondary: "" },
     rows: [],
-    legend: "Score 0–100. Tiers: 90+ Excellent, 75+ Good, 60+ Adequate, 40+ Weak, else Poor.",
+    legend: t("card.toolEval.legend"),
     footer: "github.com/MiaAI-Lab/sparkDash",
     generatedAt: now,
   };
@@ -551,17 +627,21 @@ function compareSide(
   tag: "A" | "B",
   data: NormToolResult,
   run: Pick<ToolEvalRun, "label" | "startedAt" | "model">,
-  sparkName?: string | null
+  sparkName: string | null | undefined,
+  t: TFunction<"benchRun">,
+  te: TFunction<"toolEval"> | undefined
 ): ShareCardCompareSide {
-  const tier = scoreTier(data.score);
   return {
-    heading: `RUN ${tag} · ${sparkName ? `${sparkName} · ` : ""}${run.label || shareCardDate(run.startedAt)}`,
+    heading: t("card.compare.heading", {
+      tag,
+      rest: `${sparkName ? `${sparkName} · ` : ""}${run.label || shareCardDate(run.startedAt)}`,
+    }),
     model: data.model || run.model || "",
     score: data.score,
-    rating: data.rating?.replace(/[★☆]+/g, "").trim() || tier?.label || "",
+    rating: toolRatingText(data, te),
     tone: data.safety.length ? "warn" : toolEvalTone(data.score),
     // Failures are left off the card, as on the single-run card.
-    summary: data.scenarios.length ? `${data.counts.pass} pass · ${data.counts.partial} partial` : "",
+    summary: data.scenarios.length ? t("card.compare.summary", { pass: data.counts.pass, partial: data.counts.partial }) : "",
     safety: data.safety.length,
   };
 }
@@ -576,9 +656,16 @@ export function buildToolEvalCompareShareCard(
   b: NormToolResult,
   runA: Pick<ToolEvalRun, "label" | "startedAt" | "model" | "baseUrl" | "options" | "type">,
   runB: Pick<ToolEvalRun, "label" | "startedAt" | "model" | "baseUrl" | "options" | "type">,
-  src: { sparkName?: string | null; sparkNameA?: string | null; sparkNameB?: string | null },
+  src: {
+    sparkName?: string | null;
+    sparkNameA?: string | null;
+    sparkNameB?: string | null;
+    t?: TFunction<"benchRun">;
+    te?: TFunction<"toolEval">;
+  },
   now: number = Date.now()
 ): ShareCardModel {
+  const t = resolveT(src.t);
   const cmp = compareToolResults(a, b);
   // Runs from two Sparks: each side names its Spark and the card's host reads "spark1 vs spark3".
   const cross = Boolean(src.sparkNameA && src.sparkNameB && src.sparkNameA !== src.sparkNameB);
@@ -591,9 +678,9 @@ export function buildToolEvalCompareShareCard(
     return { label, a: v(d.a), b: v(d.b), delta: text, tone };
   };
   const stats = [
-    stat("Deployability", head("Deployability"), 1),
-    stat("Responsiveness", head("Responsiveness"), 1),
-    stat("Scenarios passed", head("Passed"), 0),
+    stat(t("card.toolEval.deployability"), head("Deployability"), 1),
+    stat(t("card.toolEval.responsiveness"), head("Responsiveness"), 1),
+    stat(t("card.compare.scenariosPassed"), head("Passed"), 0),
   ].filter((x): x is ShareCardCompareStat => x != null);
   const changes =
     cmp.hasScenarios.a && cmp.hasScenarios.b
@@ -604,9 +691,13 @@ export function buildToolEvalCompareShareCard(
         }
       : null;
   const caveats = configCaveats(runA, runB);
-  const caveat = caveats.length ? `${caveats[0]}${caveats.length > 1 ? ` (+${caveats.length - 1} more)` : ""}` : "";
-  const sideA = compareSide("A", a, runA, cross ? src.sparkNameA : null);
-  const sideB = compareSide("B", b, runB, cross ? src.sparkNameB : null);
+  const caveat = caveats.length
+    ? caveats.length > 1
+      ? t("card.compare.more", { caveat: caveats[0], count: caveats.length - 1 })
+      : caveats[0]
+    : "";
+  const sideA = compareSide("A", a, runA, cross ? src.sparkNameA : null, t, src.te);
+  const sideB = compareSide("B", b, runB, cross ? src.sparkNameB : null, t, src.te);
   return {
     toolEvalCompare: {
       a: sideA,
@@ -617,21 +708,27 @@ export function buildToolEvalCompareShareCard(
       changes,
       categories: cmp.categories.map((c) => {
         const clamp = (v: number | null) => (v == null ? null : Math.max(0, Math.min(100, v)));
-        const d = compareDelta(c, " pts");
-        return { id: c.id, name: c.name ?? CATEGORY_NAMES[c.id] ?? "Category", a: clamp(c.a), b: clamp(c.b), delta: d.text, tone: d.tone };
+        const d = compareDelta(c, t("card.compare.pts"));
+        return { id: c.id, name: toolCategoryText(c, src.te, t("card.toolEval.category")), a: clamp(c.a), b: clamp(c.b), delta: d.text, tone: d.tone };
       }),
       caveat,
     },
     brand: "sparkDash",
-    host: cross ? `${src.sparkNameA} vs ${src.sparkNameB}` : src.sparkName || "",
-    title: "Tool Eval Comparison",
+    host: cross ? t("card.compare.hosts", { a: src.sparkNameA, b: src.sparkNameB }) : src.sparkName || "",
+    title: t("card.compare.title"),
     subtitle: "",
     chips: [],
-    status: caveat ? { label: "DIFFERENT SETUP", tone: "warn" } : { label: "SAME SETUP", tone: "ok" },
-    meta: `Score ${score.text} · ${sideA.model || "run A"} → ${sideB.model || "run B"}`,
-    columns: { load: "Category", primary: "Run A", secondary: "Run B" },
+    status: caveat
+      ? { label: t("card.compare.differentSetup"), tone: "warn" }
+      : { label: t("card.compare.sameSetup"), tone: "ok" },
+    meta: t("card.compare.meta", {
+      delta: score.text,
+      a: sideA.model || t("card.compare.runA"),
+      b: sideB.model || t("card.compare.runB"),
+    }),
+    columns: { load: t("card.compare.colCategory"), primary: t("card.compare.colRunA"), secondary: t("card.compare.colRunB") },
     rows: [],
-    legend: "Run B against run A, the baseline. Green is better, red is worse. Scores 0–100.",
+    legend: t("card.compare.legend"),
     footer: "github.com/MiaAI-Lab/sparkDash",
     generatedAt: now,
   };
@@ -945,8 +1042,10 @@ function drawPill(ctx: ShareCardContext, P: Palette, x: number, y: number, label
 export function paintShareCard(
   ctx: ShareCardContext,
   model: ShareCardModel,
-  theme: ShareCardTheme = "dark"
+  theme: ShareCardTheme = "dark",
+  tIn?: TFunction<"benchRun">
 ): void {
+  const t = resolveT(tIn);
   const P = PALETTES[theme] ?? PALETTES.dark;
   const width = SHARE_CARD_WIDTH;
   const height = shareCardHeight(model);
@@ -978,19 +1077,19 @@ export function paintShareCard(
   }
 
   if (model.quality) {
-    const bottom = paintQualityCard(ctx, P, model);
+    const bottom = paintQualityCard(ctx, P, model, t);
     paintFooter(ctx, P, model, bottom + 42, height);
     return;
   }
 
   if (model.toolEvalCompare) {
-    const bottom = paintToolEvalCompareCard(ctx, P, model);
+    const bottom = paintToolEvalCompareCard(ctx, P, model, t);
     paintFooter(ctx, P, model, bottom + 42, height);
     return;
   }
 
   if (model.toolEval) {
-    const bottom = paintToolEvalCard(ctx, P, model);
+    const bottom = paintToolEvalCard(ctx, P, model, t);
     paintFooter(ctx, P, model, bottom + 42, height);
     return;
   }
@@ -1162,7 +1261,7 @@ function qualityTextColor(P: Palette, pct: number | null): string {
  * The Quality card from the title down: title + status, a hero with the overall ring and the
  * model under test, then a two-column grid of category tiles. Returns the bottom edge's y.
  */
-function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel): number {
+function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel, t: TFunction<"benchRun">): number {
   const q = model.quality as ShareCardQuality;
   const inner = SHARE_CARD_WIDTH - PAD * 2;
 
@@ -1171,7 +1270,7 @@ function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardMod
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.textStrong;
   ctx.font = font(700, 44);
-  ctx.fillText("Quality benchmark", PAD, PAD + 78);
+  ctx.fillText(model.title, PAD, PAD + 78);
   ctx.font = font(700, 20);
   const pillW = ctx.measureText(model.status.label).width + 40;
   drawPill(ctx, P, PAD + inner - pillW, PAD + 46, model.status.label, model.status.tone);
@@ -1207,7 +1306,7 @@ function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardMod
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.muted;
   ctx.font = font(600, 15);
-  ctx.fillText("OVERALL", cx, cy - 30);
+  ctx.fillText(t("card.paint.overall"), cx, cy - 30);
   ctx.fillStyle = P.textStrong;
   ctx.font = font(700, 48);
   const score = q.overall == null ? "—" : q.overall.toFixed(1);
@@ -1229,7 +1328,7 @@ function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardMod
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.textStrong;
   ctx.font = font(700, 36);
-  ctx.fillText(fitText(ctx, q.modelName || "Unknown model", textW), textX, cy - 40);
+  ctx.fillText(fitText(ctx, q.modelName || t("card.paint.unknownModel"), textW), textX, cy - 40);
   ctx.fillStyle = P.muted;
   ctx.font = font(500, 22);
   const where = [q.target, q.runLabel].filter(Boolean).join(" · ");
@@ -1294,7 +1393,7 @@ function paintQualityCard(ctx: ShareCardContext, P: Palette, model: ShareCardMod
     if (tile.delta != null) {
       ctx.font = font(600, 19);
       ctx.fillStyle = tile.delta > 0 ? P.success : tile.delta < 0 ? P.danger : P.muted;
-      ctx.fillText(tile.delta === 0 ? "same" : `${tile.delta > 0 ? "+" : ""}${tile.delta.toFixed(1)} pts`, right, y + 76);
+      ctx.fillText(tile.delta === 0 ? t("card.paint.same") : t("card.paint.deltaPts", { delta: `${tile.delta > 0 ? "+" : ""}${tile.delta.toFixed(1)}` }), right, y + 76);
     }
 
     // Bar
@@ -1381,7 +1480,7 @@ function panelBox(ctx: ShareCardContext, P: Palette, x: number, y: number, w: nu
  * responsiveness), the pass/partial/fail strip, safety warnings when there are any, then a
  * two-column grid of category tiles. Returns the bottom edge's y.
  */
-function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel): number {
+function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel, t: TFunction<"benchRun">): number {
   const te = model.toolEval as ShareCardToolEval;
   const inner = SHARE_CARD_WIDTH - PAD * 2;
   const L = toolEvalLayout(te);
@@ -1421,7 +1520,7 @@ function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardMo
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.muted;
   ctx.font = font(600, 15);
-  ctx.fillText("SCORE", cx, cy - 30);
+  ctx.fillText(t("card.paint.score"), cx, cy - 30);
   ctx.fillStyle = P.textStrong;
   ctx.font = font(700, 48);
   ctx.fillText(te.score == null ? "—" : te.score.toFixed(1), cx, cy + 18);
@@ -1468,7 +1567,7 @@ function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardMo
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.textStrong;
   // Long model ids shrink to fit before they are cut.
-  const modelName = te.modelName || "Unknown model";
+  const modelName = te.modelName || t("card.paint.unknownModel");
   shrinkToFit(ctx, modelName, 700, 34, 24, textW);
   ctx.fillText(fitText(ctx, modelName, textW), textX, cy - 8);
   ctx.fillStyle = P.muted;
@@ -1489,17 +1588,17 @@ function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardMo
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.muted;
   ctx.font = font(600, 16);
-  ctx.fillText("SCENARIO OUTCOMES", sx, stripY + 34);
+  ctx.fillText(t("card.paint.scenarioOutcomes"), sx, stripY + 34);
   ctx.textAlign = "right";
   ctx.font = font(400, 20);
   ctx.fillText(te.summary, sx + sw, stripY + 34);
   // Failures are left off the card: the bar keeps its full scale (so pass/partial show their
   // real share of all scenarios) but only pass, partial and other are drawn and listed.
   const outcomes: { label: string; n: number; color: string; shown: boolean }[] = [
-    { label: "pass", n: te.counts.pass, color: P.success, shown: true },
-    { label: "partial", n: te.counts.partial, color: P.warning, shown: true },
-    { label: "fail", n: te.counts.fail, color: P.danger, shown: false },
-    { label: "other", n: te.counts.other, color: P.muted, shown: te.counts.other > 0 },
+    { label: t("card.paint.pass"), n: te.counts.pass, color: P.success, shown: true },
+    { label: t("card.paint.partial"), n: te.counts.partial, color: P.warning, shown: true },
+    { label: t("card.paint.fail"), n: te.counts.fail, color: P.danger, shown: false },
+    { label: t("card.paint.other"), n: te.counts.other, color: P.muted, shown: te.counts.other > 0 },
   ];
   const barY = stripY + 50;
   ctx.fillStyle = P.badge;
@@ -1557,7 +1656,7 @@ function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardMo
     ctx.fillStyle = P.warning;
     ctx.font = font(700, 20);
     ctx.fillText(
-      `SAFETY WARNINGS (${te.safetyTotal}) · the rating is capped`,
+      t("card.paint.safetyHead", { count: te.safetyTotal }),
       PAD + 28,
       y + 38
     );
@@ -1569,7 +1668,7 @@ function paintToolEvalCard(ctx: ShareCardContext, P: Palette, model: ShareCardMo
     if (te.safetyTotal > te.safety.length) {
       ctx.fillStyle = P.muted;
       ctx.fillText(
-        `+${te.safetyTotal - te.safety.length} more`,
+        t("card.paint.safetyMore", { count: te.safetyTotal - te.safety.length }),
         PAD + 28,
         y + TE_SAFETY_HEAD + 16 + te.safety.length * TE_SAFETY_LINE
       );
@@ -1683,7 +1782,7 @@ function pctText(v: number | null): string {
  * a caveat line when the setups differ, metric tiles, then every category with both bars and
  * the change in points. Returns the bottom edge's y.
  */
-function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel): number {
+function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: ShareCardModel, t: TFunction<"benchRun">): number {
   const c = model.toolEvalCompare as ShareCardToolEvalCompare;
   const inner = SHARE_CARD_WIDTH - PAD * 2;
   const L = toolEvalCompareLayout(c);
@@ -1710,7 +1809,7 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
     ctx.font = font(600, 16);
     ctx.fillText(fitText(ctx, side.heading.toUpperCase(), colW), x, top + 44);
     ctx.fillStyle = P.textStrong;
-    const modelName = side.model || "Unknown model";
+    const modelName = side.model || t("card.paint.unknownModel");
     shrinkToFit(ctx, modelName, 700, 26, 18, colW);
     ctx.fillText(fitText(ctx, modelName, colW), x, top + 84);
     ctx.fillStyle = side.score == null ? P.muted : toneColor(P, side.tone);
@@ -1729,7 +1828,7 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
     if (side.safety > 0) {
       ctx.fillStyle = P.warning;
       ctx.font = font(600, 20);
-      ctx.fillText(`${side.safety} safety ${side.safety === 1 ? "warning" : "warnings"}`, x, top + (side.summary ? 232 : 200));
+      ctx.fillText(t("card.toolEval.safety", { count: side.safety }), x, top + (side.summary ? 232 : 200));
     }
   };
   drawSide(c.a, PAD + 36);
@@ -1747,13 +1846,13 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = P.muted;
   ctx.font = font(600, 16);
-  ctx.fillText("SCORE CHANGE", centerX, top + 96);
+  ctx.fillText(t("card.paint.scoreChange"), centerX, top + 96);
   ctx.fillStyle = c.scoreDeltaTone === "muted" ? P.muted : toneColor(P, c.scoreDeltaTone);
   ctx.font = font(700, 58);
   ctx.fillText(c.scoreDelta, centerX, top + 160);
   ctx.fillStyle = P.muted;
   ctx.font = font(400, 18);
-  ctx.fillText("run B vs run A", centerX, top + 196);
+  ctx.fillText(t("card.paint.bVsA"), centerX, top + 196);
 
   // Caveat
   if (L.caveatY != null) {
@@ -1796,11 +1895,11 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
       ctx.textAlign = "left";
       ctx.fillStyle = P.muted;
       ctx.font = font(600, 15);
-      ctx.fillText("SCENARIO CHANGES", x + 24, L.tilesY + 34);
+      ctx.fillText(t("card.paint.scenarioChanges"), x + 24, L.tilesY + 34);
       let cx = x + 24;
       for (const part of [
-        { n: c.changes.improved, label: "better", color: P.success },
-        { n: c.changes.regressed, label: "worse", color: P.danger },
+        { n: c.changes.improved, label: t("card.paint.better"), color: P.success },
+        { n: c.changes.regressed, label: t("card.paint.worse"), color: P.danger },
       ]) {
         ctx.font = font(700, 32);
         ctx.fillStyle = part.n > 0 ? part.color : P.muted;
@@ -1813,7 +1912,7 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
       }
       ctx.font = font(400, 17);
       ctx.fillStyle = P.muted;
-      ctx.fillText(`${c.changes.unchanged} unchanged`, x + 24, L.tilesY + 108);
+      ctx.fillText(t("card.paint.unchanged", { count: c.changes.unchanged }), x + 24, L.tilesY + 108);
     }
   }
 
@@ -1831,24 +1930,24 @@ function paintToolEvalCompareCard(ctx: ShareCardContext, P: Palette, model: Shar
     ctx.font = font(600, 16);
     ctx.fillStyle = P.muted;
     ctx.textAlign = "left";
-    ctx.fillText("CATEGORY", left, y0 + TC_CATS_HEAD / 2 + 2);
+    ctx.fillText(t("card.paint.category"), left, y0 + TC_CATS_HEAD / 2 + 2);
     // Legend swatches over the bars
     ctx.fillStyle = `${P.muted}99`;
     ctx.beginPath();
     ctx.roundRect(barX, y0 + TC_CATS_HEAD / 2 - 5, 18, 8, 4);
     ctx.fill();
     ctx.fillStyle = P.muted;
-    ctx.fillText("RUN A", barX + 26, y0 + TC_CATS_HEAD / 2 + 2);
+    ctx.fillText(t("card.paint.runA"), barX + 26, y0 + TC_CATS_HEAD / 2 + 2);
     ctx.fillStyle = P.accent;
     ctx.beginPath();
     ctx.roundRect(barX + 110, y0 + TC_CATS_HEAD / 2 - 5, 18, 8, 4);
     ctx.fill();
     ctx.fillStyle = P.muted;
-    ctx.fillText("RUN B", barX + 136, y0 + TC_CATS_HEAD / 2 + 2);
+    ctx.fillText(t("card.paint.runB"), barX + 136, y0 + TC_CATS_HEAD / 2 + 2);
     ctx.textAlign = "right";
     ctx.fillText("A", aRight, y0 + TC_CATS_HEAD / 2 + 2);
     ctx.fillText("B", bRight, y0 + TC_CATS_HEAD / 2 + 2);
-    ctx.fillText("CHANGE", right, y0 + TC_CATS_HEAD / 2 + 2);
+    ctx.fillText(t("card.paint.change"), right, y0 + TC_CATS_HEAD / 2 + 2);
 
     c.categories.forEach((cat, i) => {
       const y = y0 + TC_CATS_HEAD + i * TC_CATS_ROW;
